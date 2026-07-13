@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>PFC Radar One — Intelligence Desk</title>
+<title>PFC Radar One — Intelligence Desk (v6.7)</title>
 <style>
 /* ============ TOKENS ============ */
 :root{
@@ -168,6 +168,9 @@ main{max-width:1180px;margin:0 auto 60px;padding:0 20px}
   <div id="list"></div>
   <button class="more hide" id="moreBtn" onclick="page++;render(true)">Show more</button>
   <div class="empty hide" id="empty">No items match the current filters. Widen the period or clear the search.</div>
+  <div style="text-align:center;color:var(--muted);font-size:11px;padding:26px 0 0;border-top:1px solid var(--line);margin-top:30px">
+    PFC Radar One v6.7 &middot; classification engine mirrored from the Google Sheet pipeline &middot; auto-generated intelligence, verify before circulation
+  </div>
 </main>
 
 <script>
@@ -246,6 +249,81 @@ function instOf(t){const l=t.toLowerCase();
   if(/liquidity|vrrr|\bomo\b|\bcrr\b/.test(l))return"Liquidity signal";
   if(/bond|\bncd\b|debenture/.test(l))return"Bond"; return"Funding";}
 
+/* ---------- v2: PFC borrower banks + foreign gate + scoring (mirrors .gs v6.3) ---------- */
+const PFC_CODES=["ABEPL","ABRPL","ACME","ACSPL","AECEPL","AGE23L","AGE25BL","AGE26AL","AGGHPL","AHEJ","ALREPL","APCPDCL","APDISCOMS","APEPDCL","APGENCO","APJL","APL","APPDCL","APSPDCL","APSPL","APSSDCL","APTRANSCO","ARE1L","ARE41L","ARE48L","ARPL","ARTL","ASHL","ASUPL","AUOPL","AVAADA","AVVNL","AWEK3L","AWEK4L","AWEKFL","AWEKTL","AWEMP1L","AWEMP1PL","BCGCL","BESCOM","BEST","BGCL","BGCPTL","BHEL","BLERPL","BPDCL","BRPL","BSUL","BVPCL","BWWMPL","BYPL","CBCMPL","CBRPL","CERL","CESCOM","CEWRL","CGEH","CGERPL","CIL","CMTPL","CSPCPL","CSPDCL","CSPGCL","CSPTCL","CVPPL","CVPPPL","DBLSCMPL","DEPL","DHBVNL","DMSWSL","DRPL","DVC","EESL","EI3PL","EPCL","EPGL","FBTL","FDPL","FDPL(F","FUPL","GAIPL","GAPIPL","GENSOL","GESCOM","GKEL","GPGSL","GSECL","GSPCL","GSPL","GTTPL","HEL","HESCOM","HMESPL","HNPCL","HPDCAPL","HPGCL","HPL","HPPCL","HPPL","HPPTCL","HPSEBL","HRRL","HSTPL","HSTPSL","HVPNL","JBVNL","JCRL","JDVVNL","JGBPL","JGBTPL","JGCPL","JGCPL1","JKPCL","JROPL","JRTPL","JSRECR","JSREPPL","JSWREL","JUWMJL","JUWMJOL","JVVNL","K4CPTL","KBPMPL","KEPL","KEPL-KE","KGPCL","KHPL","KIIFB","KIPCL","KMRL","KPCL","KPSTL","KPTCL","KSATL","KSEBL","KSKMPCL","MAPL","MBPL","MEL","MGFL","MMRDA","MMRDA-MM","MPDCL","MPMKVVCL","MPPGCL","MPPTCL","MRPL","MSEDCL","MSPGCL","MUML","MUNPL","MVMPL","MVSBPL","MWSL","MYTRAH","NETCL","NGEAL","NKTL","NLBFPL","NMSCEL","NPCIL","NPL","NTPC","NUPPL","NWWMPL","OKPPL","OPGC","OPGCL","OPTCL","OVNPL","PBESPL","PROJECTS","PSPCL","PSTCL","PSTCL-FLC","PTCUL","RAPPL","RDJPL","RDUPL","RGMHS1","RGMHS3","RGMOPL","RHHPL","RHPPL","RINL","RKMPPL","RMESPL","RPCL","RPDCL","RPSCL","RPVPL","RRVPNL","RRVUNL","RSHPL","RSPPL","RWEKFPL","SBEL","SBPDCL","SCCMPL","SEPC","SEPL","SGEOPL","SGSL","SHEPL","SHPL","SMPL","SPCPL","SPL","SPPL","SREIPL","SRI1PL","SRI5PL","SRI7PL","SRSSFPL","STPL","SUL","SUSHEE","SWPPL","TANGEDCO","TANTRANSCO","TBVNL","TGDISCOMS","TGGENCO","TGNPDCL","TGPXIIPL","TGSPDCL","TGTRANSCO","TMPL","TNGECL","TNPDCL","TNPGCL","TNPL","TOWMCL","TSECL","TSGENCO","TSNPDCL","TSPL","TSSPDCL","TSTRANSCO","TSWRIDCL","TVNL","TWTEPL","UHBVNL","UPPCL","UPPTCL","UPRVUNL","VEDANTA","VJNL","VPLPL","VPPL","WBPDCL","WBSEDCL","WBSETCL","WSPTL","ZREPL"];
+const PFC_NAMES=["abepl","abrpl","acme aklera","acme deoghar","acme eco clean","acme eco clean energy","acme jupiter","acme oman","acme oman agghpl","acme phalodi","acme pokhran","acme pokhran solar","acme renewtech","acme sigma urja","acme sikar","acme urja one","adani aesl","adani jaisalmer","adani jharkhand tpp","adani kamuthi","adani new industries","adani renewable energy forty one","adani wind energy kutchh three","age25bl","amplus tumkur solar energy one","ap discoms","apdiscoms","assam bio refinery","avaada mskvy","avaada sustainable urja","bhuj wind energy","buxar tpp","cge hybrid energy","cge ii","cge shree digvijay cement","cge shree digvijay cement green energy","chargezone","chenab valley power projects cvpppl","clean max zeus","clean solar power chitradurga","cleanmax","continuum","csptcl c","cvppl kwar hep","dans energy","dhbvnl rdss loans","dundigal waste 2 energy","dvc mejia tps","essar ports","evey best","fbtl interim collateral release 6 mar","fpel daylight","fpel ujwal","gasml gtsml","gensol","gentari renewables india castor one","gksml for smart metering","gmr upper karnali hydropower","gmtn update dec2024 information documents required for due diligence","goa tamnar transmission project","gopalpur","green energy","greenko sironj","hmespl substitution agreement","hpcl rajasthan refinery","hpcl renewable","hppl preliminary scrutiny report","hpsebl rdss","igtl for gas meter manufacturing","iipl eight beed","iipl one solar","indianoil ntpc green energy","iocl ifsc refinancing","jaipur jindal","jakson power","jdvvnl","jindal jaipur","jindal urban waste management","jsreppl ham road project","jsw mytrah","jswrel j","juniper beta","juniper green beam","juniper green beta","juniper green stellar","juniper green three","juniper group","juniper nirjara","juniper nirjara energy","khorlochhu hydro power","kleio solar power","kosol energie ke","lgepl 3 spvs","mahan energen","mb power","meja urja","mipl pachwara coal mine","mppakvvcl","mspgcl 65 mw solar power project at lakhmapur under re bundling scheme","mspgcl financial assistance of","msrdc sea link msl","mumbai urja marg","mundra petrochem","navinal adani","navinal transmission","nlc talabira tps","northern coalfields","ntpc rel","opera narmada","opera solar energy","opera spv","ostro kannada power","pachwara mdo","patratu vidyut utpadan nigam","punjab state transmission corporation","raj discoms","rajasthan discoms","rajasthan state discoms","rel mskvy 6 spvs","renew agni","renew green","renew mhs","renew mhs1","renew photovoltaics","renew solar energy rajasthan","rosa power","rpscl tra","sandhya hydro","sasan power","saunda mining","sel ntpcrel","serentica renewables india","shongtong karcham hep of hppcl","sikkim urja","sp desal spvs","sp group","sravanthi energy","stpl buxar","suzlon energy psf","talwandi sabo power","tecso charge zone one","tehkhand","tgdiscoms","tgspdcl tgnpdcl","transmission corporation of andhra pradesh","transvolt best nmc","tsgenco yadadri tps","up rvunl","vadhvan port project","vedanta","vedanta athena","veh jayin","veh jayin kleio","veh jayin renewables","vijaya wb","vriddhi energy india","wrsr cod"];
+const CODES_RE=new RegExp('\\b('+PFC_CODES.map(c=>c.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|')+')\\b');       // case-sensitive
+const NAMES_RE=new RegExp('\\b('+PFC_NAMES.map(n=>n.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|')+')\\b','i');
+const FOREIGN_RE=/\b(texas|kentucky|iowa|ohio|kansas|california|florida|arizona|nevada|oklahoma|virginia|colorado|missouri|alabama|tennessee|wisconsin|minnesota|louisiana|utah|nebraska|idaho|wyoming|dakota|vermont|new hampshire|new jersey|new mexico|pennsylvania|massachusetts|connecticut|michigan|illinois|arkansas|united states|white house|donald trump|biden administration|federal aviation|congress passes|\w+ county\b|congressman|senator\b|puerto rico|canada|canadian|australia|australian|brazil|indonesia|vietnam|philippines|nigeria|kenya|south africa|egypt|saudi arabia|\buae\b|\begypt\b|egyptian|\begp\b|mexico|argentina|chile|thailand|malaysia|bangladesh|pakistan|sri lanka|nepal|germany|france|spain|italy|poland|netherlands|\buk\b|united kingdom|britain|china|chinese|korea)\b/i;
+const INDIA_RE=/\bindia|\bindian\b|\u20B9|\bcrore|\blakh|discom|\bnhai\b|\bseci\b|\brbi\b|\bntpc\b|\bnhpc\b|\bpfc\b|\brec\b|ireda|hudco|irfc|nabfid|iifcl|delhi|mumbai|gujarat|rajasthan|maharashtra|karnataka|tamil nadu|telangana|andhra|odisha|uttar pradesh|madhya pradesh|bihar|jharkhand|chhattisgarh|punjab|haryana|kerala|assam|bengal|himachal|uttarakhand|kashmir|ladakh|chennai|hyderabad|bengaluru|kolkata|pune|ahmedabad|noida|lucknow|jaipur|adani|tata|reliance|jsw|jindal|l&t|larsen|mahindra|birla|vedanta|renew|greenko|avaada|acme|suzlon|torrent|sterlite|hindalco|ultratech|waaree|powergrid|coal india|gail|ongc|iocl|bpcl|hpcl|sbi|hdfc|icici|axis bank|nse|bse|sebi/i;
+function isIndian(t){return INDIA_RE.test(t)||NAMES_RE.test(t)||CODES_RE.test(t);}
+function foreignNoise(it){
+  const foreign=FOREIGN_RE.test(it.t)&&!isIndian(it.t);
+  if(!foreign)return false;
+  if(it.r==="BUSINESS"||it.r==="WATCH")return true;
+  if(it.r==="BORROWING")return !/world bank|asian development bank|\badb\b|aiib|\bndb\b|jica|kfw|\beib\b|jbic|green climate fund|sofr|libor|dollar bond/i.test(it.t);
+  return false;   // treasury: global macro stays
+}
+const NOISE_RE=/\bopinion\b|editorial|explainer|explained\b|what is |what are |why (is|are|does|did) |how (to|does|did) |top \d+|list of|here's|in charts|decoded|faq/i;
+const PRICE_RE=/share price|stock (price|rises|falls|jumps)|intraday|target price|buy or sell|multibagger|q[1-4] (results|earnings)|net profit (rises|falls|up|down)/i;
+const OUTLOOK_RE=/\boutlook\b|forecasts?\b|analysis:|study says|report says|survey/i;
+const ADVICE_RE=/mutual fund investors|home loan emi|should you|what it means for (you|investors)|your (loan|emi|money|savings)|personal finance|fixed deposit rates/i;
+function noisePen(l){let p=0;if(NOISE_RE.test(l))p-=20;if(PRICE_RE.test(l))p-=25;if(OUTLOOK_RE.test(l))p-=12;if(ADVICE_RE.test(l))p-=25;return p;}
+const CUT={BUSINESS:[55,30],WATCH:[45,20],TREASURY:[45,20],BORROWING:[50,25]};
+function grade(r,s){return s>=CUT[r][0]?"High":s>=CUT[r][1]?"Medium":"Low";}
+function scoreItem(it){
+  const l=it.t.toLowerCase(),cr=it.cr||0,mw=it.mw||0;let s=0;
+  if(it.r==="BUSINESS"){
+    if(/achieves? financial closure|financial closure|debt tie[- ]?up|seeks? (funding|debt|lender|financing)|secures?\b.{0,30}(financing|funding|loan|debt)|raises? project debt|signs? financing agreement/.test(l))s+=45;
+    if(/invites? bids|floats?\b.{0,40}tender|tender (floated|issued|for)|\brfp\b|\brfq\b|reverse auction|emerges? lowest bidder|wins? bid|letter of award|\bloa\b|letter of intent/.test(l))s+=40;
+    if(/signs? ppa|power purchase agreement|epc (award|contract)|awards? contract|wins?\b.{0,40}(project|contract|order|tender)|bags\b.{0,30}(order|project|contract)|cabinet approv|approves? project|sanctions? project|clears? project|investment approval/.test(l))s+=35;
+    if(/commences? construction|groundbreaking|breaks ground|orders? equipment/.test(l))s+=30;
+    if(/plans? invest|proposes? invest|commits? invest|announces? project|to invest|will invest|\binvests?\b|investment of|capex|capacity expansion|greenfield|brownfield/.test(l))s+=25;
+    if(/commissions?|achieves? cod|commercial operation/.test(l))s+=15;
+    if(/signs? mou|memorandum|joint venture|incorporates? spv|acquires? stake|feasibility|\bdpr\b/.test(l))s+=15;
+    s+=cr>=5000?30:cr>=1000?22:cr>=500?15:cr>=100?8:0;
+    s+=mw>=1000?25:mw>=500?18:mw>=100?8:0;
+    if(/solar|wind|hydro|pumped storage|\bbess\b|storage|transmission|thermal|nuclear|green hydrogen|ammonia|smart meter|\brdss\b/.test(l))s+=8;
+  }else if(it.r==="WATCH"){
+    if(/nclt|insolven|bankrupt|defaults?\b|fraud|\bcbi\b|probe|investigat/.test(l))s+=55;
+    if(/downgrade|rating watch|negative outlook/.test(l))s+=45;
+    if(/halt(s|ed)?|shutdown|shut down|outage|fire|blast|accident|stall(s|ed)?|strike|curtail/.test(l))s+=45;
+    if(/dues (mount|delay|pending)|mounting dues|payment delay|delayed payment|unpaid|\blps\b|terminat.{0,20}ppa/.test(l))s+=45;
+    if(/\bcod\b|commission(s|ed|ing)?|synchronis|synchroniz|commercial operation|full load|first (power|unit)/.test(l))s+=45;
+    if(/financial closure|signs? ppa|ppa signed|signs?\b.{0,35}(power deal|supply agreement|power purchase|cfd)|refinanc|prepay/.test(l))s+=40;
+    if(/wins?\b.{0,40}(project|tender|bid|contract|transmission)|secures?\b.{0,45}(project|deal|contract)|awarded\b.{0,30}project|bags\b.{0,30}(order|project)|invites? bids|floats?\b.{0,40}tender/.test(l))s+=30;
+    else if(/expands?|new project|fund[- ]?rais/.test(l))s+=20;
+    if(s===0&&/loan|project|tender|plant|capacity|\bppa\b|smart meter|transmission|solar|wind|thermal/.test(l))s+=15;
+    s+=cr>=10000?25:cr>=5000?18:cr>=1000?10:cr>=250?5:0;
+  }else if(it.r==="TREASURY"){
+    if(/rbi (cuts|hikes|keeps|holds)|mpc (decision|cuts|hikes|votes|holds)|repo rate (cut|hike|unchanged|held|hold|pause)|rate (held|pause)\b|holds? (rates?|repo)|policy (rate )?decision|maintains? (repo|status quo)/.test(l))s+=60;
+    if(/(fed|fomc) (rate )?(decision|cuts?|hikes?|holds?)|federal reserve (cuts?|hikes?|holds?)/.test(l))s+=50;
+    if(/(ecb|bank of japan|\bboj\b|bank of england|\bboe\b).{0,30}(decision|cuts?|hikes?|holds?)/.test(l))s+=40;
+    if(/\bcrr\b|\bslr\b|cash reserve ratio/.test(l))s+=50;
+    if(/rate cut|cuts? (repo|rates)|dovish|easing cycle|rate pause/.test(l))s+=30;
+    if(/sovereign rating|rating (upgrade|downgrade|outlook)|moody|s&p|fitch/.test(l))s+=50;
+    const id=it.inr||inrDir(it.t),rd=it.rt||rateDir(it.t);
+    if(id&&/record|all[- ]time|fresh low|sharp|plunge|surge|breach/.test(l))s+=45;else if(id)s+=20;
+    if(rd&&/\bbps\b|basis points|sharp|spike|plunge/.test(l))s+=25;else if(rd&&rd!=="NEUTRAL")s+=20;
+    if(/\bcpi\b|\bwpi\b|\bgdp\b|fiscal deficit|current account/.test(l))s+=/hotter|cooler|beats?|miss(es)?|above|below (estimates?|expectations?)|surpris/.test(l)?28:18;
+    if(/borrowing calendar|gross borrowing|auction (cut[- ]?off|devolve)/.test(l))s+=25;
+  }else{ // BORROWING
+    if(/liquidity (surplus|deficit|injection|absorption)|banking system liquidity|\bvrrr?\b|\bomo\b|durable liquidity|\bcrr\b (cut|hike)/.test(l))s+=55;
+    if(/raises?|raised|issues?|issued|prices?|priced|secures?|secured|signs?|signed|allots?|launches?|closes?|mobilises?/.test(l))s+=15;
+    if(/green bond|social bond|sustainability|esg bond|transition bond/.test(l))s+=10;
+    s+=cr>=10000?40:cr>=5000?32:cr>=2000?20:cr>=500?10:0;
+    if(/power finance|\bpfc\b|\brec\b (limited|ltd)/.test(l))s+=30;
+    if(/\bireda\b|\birfc\b|\bhudco\b|\bnabfid\b|\biifcl\b/.test(l))s+=22;
+    if(/world bank|asian development bank|\badb\b|\baiib\b|\bndb\b|\bjica\b|\bkfw\b|\beib\b|jbic|green climate fund/.test(l)&&/india|energy|power|infra/.test(l))s+=40;
+    if(/gift city|\bifsc\b|maiden|debut|first[- ]ever|inaugural/.test(l))s+=18;
+    if(/coupon|priced at|cut[- ]?off/.test(l))s+=8;
+    if(/rating (upgrade|affirm|downgrade)/.test(l))s+=25;
+    if(/oversubscrib|strong demand|order book/.test(l))s+=10;
+  }
+  s+=noisePen(l);
+  return grade(it.r,s);
+}
+
 /* ---------- state ---------- */
 const RADARS=[["ALL","All Radars"],["BUSINESS","Business"],["WATCH","Borrower Watch"],["BORROWING","Borrowing"],["TREASURY","Treasury"]];
 const IMP_RANK={High:0,Medium:1,Low:2};
@@ -260,30 +338,59 @@ function loadEmbedded(){
   document.getElementById('srcInfo').innerHTML =
     '<b>'+items.length+'</b> items &middot; snapshot '+generatedAt+'<br>'+srcNote;
 }
+let RECOMPUTE = true;   // regrade embedded snapshot with v6.3 engine; live data keeps sheet grades
 function enrich(){
+  items=items.filter(it=>!foreignNoise(it));
   items.forEach(it=>{
+    it.pfcb = CODES_RE.test(it.t)||NAMES_RE.test(it.t);
     it.cr = (it.x&&it.x.cr)||amountCr(it.t);
     if(it.r==="BUSINESS"){it.state=stateOf(it.t);it.sector=sectorOf(it.t);it.mw=mwOf(it.t);}
     if(it.r==="TREASURY"){it.theme=(it.x&&it.x.th)||themeOf(it.t);it.rt=(it.x&&it.x.rt)||rateDir(it.t);it.inr=(it.x&&it.x.inr)||inrDir(it.t);}
     if(it.r==="WATCH"){it.wtype=watchType(it.t);}
     if(it.r==="BORROWING"){it.inst=(it.x&&it.x.inst)||instOf(it.t);}
-    if(!it.i) it.i="Low";
+    if(RECOMPUTE||!it.i) it.i=scoreItem(it);
+    it.tk=it.t.toLowerCase().replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(w=>w.length>3);
   });
+  const kept=[];
+  items.forEach(it=>{
+    const dup=kept.find(k=>k.r===it.r&&sim(k.tk,it.tk)>=0.72);
+    if(dup){dup.nsrc=(dup.nsrc||1)+1;if((IMP_RANK[it.i]??3)<(IMP_RANK[dup.i]??3))dup.i=it.i;}
+    else kept.push(it);
+  });
+  items=kept;
 }
+function sim(a,b){if(!a.length||!b.length)return 0;const sb=new Set(b);let n=0;a.forEach(w=>{if(sb.has(w))n++;});return n/Math.min(a.length,b.length);}
 
 /* ---------- live mode ---------- */
+function applyLive(j){
+  if(!j||!j.items)throw new Error("Unexpected response");
+  items=j.items; RECOMPUTE=false; generatedAt=(j.generatedAt||"").slice(0,16).replace("T"," ");
+  srcNote="Live from Google Sheet"+(j.total?" ("+j.total+" served)":"");
+  enrich(); buildFilters(); setPage(); render();
+  document.getElementById('srcInfo').innerHTML='<b>'+items.length+'</b> items &middot; live '+generatedAt+'<br>'+srcNote;
+}
+function jsonpLive(){                       // CORS-proof fallback: <script> tag injection
+  return new Promise((res,rej)=>{
+    const fn="pfcLive_"+Date.now();
+    const t=setTimeout(()=>{cleanup();rej(new Error("JSONP timeout — check web-app access is 'Anyone'"));},30000);
+    function cleanup(){clearTimeout(t);delete window[fn];sc.remove();}
+    window[fn]=j=>{cleanup();res(j);};
+    const sc=document.createElement("script");
+    sc.src=APPS_SCRIPT_URL+"?days=30&callback="+fn;
+    sc.onerror=()=>{cleanup();rej(new Error("Script load blocked — redeploy web app with access: Anyone"));};
+    document.body.appendChild(sc);
+  });
+}
 async function refreshLive(){
-  if(!APPS_SCRIPT_URL){alert("Live mode not configured.\n\n1) In the PFC Radar One Apps Script: Deploy > New deployment > Web app (execute as Me, access: Anyone).\n2) Paste the /exec URL into APPS_SCRIPT_URL at the top of this file.\n\nUntil then, this page shows the embedded 30-day snapshot.");return;}
+  if(!APPS_SCRIPT_URL){alert("Live mode not configured.\n\n1) In the PFC Radar One Apps Script (v6.4): Deploy > New deployment > Web app (execute as Me, access: Anyone).\n2) Paste the /exec URL into APPS_SCRIPT_URL at the top of this file.\n\nUntil then, this page shows the embedded 30-day snapshot.");return;}
   const btn=document.getElementById('liveBtn');btn.disabled=true;btn.textContent="Fetching…";
   try{
     const r=await fetch(APPS_SCRIPT_URL+"?days=30",{redirect:"follow"});
-    const j=await r.json();
-    if(!j.items) throw new Error("Unexpected response");
-    items=j.items; generatedAt=(j.generatedAt||"").slice(0,16).replace("T"," ");
-    srcNote="Live from Google Sheet";
-    enrich(); buildFilters(); setPage(); render();
-    document.getElementById('srcInfo').innerHTML='<b>'+items.length+'</b> items &middot; live '+generatedAt+'<br>'+srcNote;
-  }catch(e){alert("Live fetch failed: "+e.message+"\nCheck deployment access is set to 'Anyone'.");}
+    applyLive(await r.json());
+  }catch(e1){
+    try{ applyLive(await jsonpLive()); }     // browsers on GitHub Pages often block the fetch path; JSONP works
+    catch(e2){alert("Live refresh failed.\nfetch: "+e1.message+"\nJSONP: "+e2.message+"\n\nFix: Apps Script > Deploy > Manage deployments > Edit > Who has access: Anyone (not 'Anyone with Google account') > Deploy, then use the NEW /exec URL.");}
+  }
   btn.disabled=false;btn.textContent="\u21BB Live refresh";
 }
 
@@ -355,6 +462,8 @@ function card(it){
   if(it.r==="WATCH"){P("Type",it.wtype);P("\u20B9Cr",it.cr&&it.cr.toLocaleString('en-IN'));}
   if(it.r==="BORROWING"){P("Instrument",it.inst);P("Amount",(it.x&&it.x.amt)||(it.cr&&"\u2248 \u20B9"+it.cr.toLocaleString('en-IN')+" cr"));P("Tenor",it.x&&it.x.ten);}
   if(it.r==="TREASURY"){P("Theme",it.theme);P("Rates",it.rt);P("INR",it.inr);}
+  if(it.pfcb)pills.push('<span class="pill" style="background:var(--watch);color:#fff">PFC BORROWER</span>');
+  if(it.nsrc>1)pills.push('<span class="pill">'+it.nsrc+' sources</span>');
   P("Feed",it.f);
   const note=it.x&&(it.x.ben||it.x.imp)?'<div class="note">'+esc(it.x.ben||it.x.imp)+(it.x.hed?' &middot; <i>'+esc(it.x.hed)+'</i>':'')+'</div>':'';
   return '<article class="card" data-r="'+it.r+'"><div class="cline">'+
