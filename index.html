@@ -168,7 +168,7 @@ main{max-width:1180px;margin:0 auto 60px;padding:0 20px}
   </div>
   <div id="list"></div>
   <button class="more hide" id="moreBtn" onclick="page++;render(true)">Show more</button>
-  <div class="empty hide" id="empty">No items match the current filters. Widen the period or clear the search.</div>
+  <div class="empty hide" id="empty">No items match the current filters.<span id="emptyWhy"></span></div>
   <div style="text-align:center;color:var(--muted);font-size:11px;padding:26px 0 0;border-top:1px solid var(--line);margin-top:30px">
     PFC Radar One v6.7 &middot; classification engine mirrored from the Google Sheet pipeline &middot; auto-generated intelligence, verify before circulation
   </div>
@@ -380,8 +380,12 @@ function applyLive(j,via){
   if(!j||!j.items)throw new Error("Unexpected response");
   items=j.items; RECOMPUTE=false; generatedAt=(j.publishedAt||j.generatedAt||"").slice(0,16).replace("T"," ");
   enrich(); buildFilters(); setPage(); render();
+  const maxD=items.reduce((m,i)=>i.d>m?i.d:m,"");
+  const ageDays=maxD?Math.floor((Date.now()-new Date(maxD).getTime())/864e5):null;
+  const stale=ageDays!==null&&ageDays>=1;
   document.getElementById('srcInfo').innerHTML='<b>'+items.length+'</b> items &middot; <span style="color:var(--lo);font-weight:700">\u25CF LIVE '+generatedAt+'</span><br>'+
-    (via==="published"?"auto-synced from published data.json":"synced via Apps Script API");
+    'data through <b>'+maxD+'</b>'+(stale?' <span style="color:var(--md);font-weight:700">('+ageDays+'d old \u2014 run/publish from the sheet)</span>':'')+
+    ' &middot; '+(via==="published"?"via data.json":"via API");
 }
 function liveUrl(){
   try{return (localStorage.getItem('pfcApiUrl')||APPS_SCRIPT_URL_DEFAULT||"").trim();}catch(e){return APPS_SCRIPT_URL_DEFAULT;}
@@ -489,6 +493,13 @@ function render(keepScroll){
   document.getElementById('list').innerHTML=slice.map(card).join('');
   document.getElementById('moreBtn').classList.toggle('hide',pool.length<=slice.length);
   document.getElementById('empty').classList.toggle('hide',pool.length>0);
+  if(pool.length===0){
+    const maxD=items.reduce((m,i)=>i.d>m?i.d:m,"");
+    const ageDays=maxD?Math.floor((Date.now()-new Date(maxD).getTime())/864e5):null;
+    document.getElementById('emptyWhy').innerHTML=(period>0&&ageDays!==null&&ageDays>=period)
+      ?"<br>Newest available item is dated <b>"+maxD+"</b> \u2014 outside this window. Publish fresh data from your sheet (menu \u203A Publish data to GitHub now), or widen the period."
+      :" Widen the period or clear the search.";
+  }
   if(!keepScroll&&page===1)window.scrollTo({top:0});
 }
 function card(it){
