@@ -140,6 +140,7 @@ main{max-width:1180px;margin:0 auto 60px;padding:0 20px}
   <div class="hspace"></div>
   <div class="src" id="srcInfo"></div>
   <button class="hbtn" id="liveBtn" onclick="refreshLive()" title="Fetch latest from the Google Sheet web app">&#8635; Live refresh</button>
+  <button class="hbtn" onclick="setLiveUrl()" title="Set or change the Apps Script /exec URL (stored in this browser)">&#9881;</button>
   <button class="hbtn" onclick="exportCsv()" title="Download current filtered view as CSV">&#8681; CSV</button>
   <button class="hbtn" onclick="toggleTheme()" id="themeBtn">&#9789; Dark</button>
 </header>
@@ -175,7 +176,7 @@ main{max-width:1180px;margin:0 auto 60px;padding:0 20px}
 
 <script>
 /* ================= CONFIG (edit these two lines only) ================= */
-const APPS_SCRIPT_URL = "";   // paste your deployed Apps Script web-app /exec URL to go live
+const APPS_SCRIPT_URL_DEFAULT = "";   // optional: hardcode your /exec URL here
 const LOGIN_ID = "pfc";       // login ID (leave "" to disable the gate)
 const PASSCODE = "candoit";   // password
 /* ====================================================================== */
@@ -264,6 +265,7 @@ function foreignNoise(it){
   if(it.r==="BORROWING")return !/world bank|asian development bank|\badb\b|aiib|\bndb\b|jica|kfw|\beib\b|jbic|green climate fund|sofr|libor|dollar bond/i.test(it.t);
   return false;   // treasury: global macro stays
 }
+const STOCKTIP_RE=/(stocks?|shares?) to (buy|watch|sell|pick|track)|top \d+(\s+\w+){0,3}\s+(stocks?|shares?|picks?)|these \d+(\s+\w+){0,3}\s+stocks?|\d+ stocks? (to|that|for|are)|multibagger|target price|price target|buy or sell|intraday (picks?|calls?|trading)|brokerage (calls?|picks?|radar|view)|(buy|sell|hold|accumulate|reduce) (rating|call|recommendation)|(initiates?|maintains?|upgrades? to|downgrades? to) (buy|sell|hold|overweight|underweight)|stock (recommendation|pick|idea|tip)s?|technical picks?|stocks in focus|hot stocks|penny stocks?|momentum picks?/i;
 const NOISE_RE=/\bopinion\b|editorial|explainer|explained\b|what is |what are |why (is|are|does|did) |how (to|does|did) |top \d+|list of|here's|in charts|decoded|faq/i;
 const PRICE_RE=/share price|stock (price|rises|falls|jumps)|intraday|target price|buy or sell|multibagger|q[1-4] (results|earnings)|net profit (rises|falls|up|down)/i;
 const OUTLOOK_RE=/\boutlook\b|forecasts?\b|analysis:|study says|report says|survey/i;
@@ -336,11 +338,12 @@ function loadEmbedded(){
   items=EMBEDDED.items||[]; generatedAt=EMBEDDED.generatedAt||""; srcNote=EMBEDDED.sourceNote||"Embedded snapshot";
   enrich(); buildFilters(); render();
   document.getElementById('srcInfo').innerHTML =
-    '<b>'+items.length+'</b> items &middot; snapshot '+generatedAt+'<br>'+srcNote;
+    '<b>'+items.length+'</b> items &middot; <span style="color:var(--md);font-weight:700">SNAPSHOT '+generatedAt+'</span><br>'+
+    (liveUrl()?'syncing with sheet\u2026':'not synced with your sheet \u2014 press Live refresh once to connect');
 }
 let RECOMPUTE = true;   // regrade embedded snapshot with v6.3 engine; live data keeps sheet grades
 function enrich(){
-  items=items.filter(it=>!foreignNoise(it));
+  items=items.filter(it=>!foreignNoise(it)&&!STOCKTIP_RE.test(it.t));
   items.forEach(it=>{
     it.pfcb = CODES_RE.test(it.t)||NAMES_RE.test(it.t);
     it.cr = (it.x&&it.x.cr)||amountCr(it.t);
@@ -349,15 +352,26 @@ function enrich(){
     if(it.r==="WATCH"){it.wtype=watchType(it.t);}
     if(it.r==="BORROWING"){it.inst=(it.x&&it.x.inst)||instOf(it.t);}
     if(RECOMPUTE||!it.i) it.i=scoreItem(it);
-    it.tk=it.t.toLowerCase().replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(w=>w.length>3);
+    it.tk=toks(it.t);
   });
   const kept=[];
   items.forEach(it=>{
-    const dup=kept.find(k=>k.r===it.r&&sim(k.tk,it.tk)>=0.72);
+    const dup=kept.find(k=>k.r===it.r&&isDup(k,it));
     if(dup){dup.nsrc=(dup.nsrc||1)+1;if((IMP_RANK[it.i]??3)<(IMP_RANK[dup.i]??3))dup.i=it.i;}
     else kept.push(it);
   });
   items=kept;
+}
+function toks(t){
+  return String(t).toLowerCase().replace(/,/g,'').replace(/[^a-z0-9 ]/g,' ')
+    .split(/\s+/).map(w=>w.replace(/(ies|es|s|ing|ed)$/,''))    // light stem: invests==invest
+    .filter(w=>w.length>=3||/^\d+$/.test(w));                    // keep numbers like 15037
+}
+function isDup(a,b){
+  if(sim(a.tk,b.tk)>=0.62)return true;
+  // same extracted amount + same lead entity tokens = same story reworded
+  if(a.cr&&b.cr&&a.cr===b.cr&&a.tk.slice(0,2).join(' ')===b.tk.slice(0,2).join(' '))return true;
+  return false;
 }
 function sim(a,b){if(!a.length||!b.length)return 0;const sb=new Set(b);let n=0;a.forEach(w=>{if(sb.has(w))n++;});return n/Math.min(a.length,b.length);}
 
@@ -367,29 +381,42 @@ function applyLive(j){
   items=j.items; RECOMPUTE=false; generatedAt=(j.generatedAt||"").slice(0,16).replace("T"," ");
   srcNote="Live from Google Sheet"+(j.total?" ("+j.total+" served)":"");
   enrich(); buildFilters(); setPage(); render();
-  document.getElementById('srcInfo').innerHTML='<b>'+items.length+'</b> items &middot; live '+generatedAt+'<br>'+srcNote;
+  document.getElementById('srcInfo').innerHTML='<b>'+items.length+'</b> items &middot; <span style="color:var(--lo);font-weight:700">\u25CF LIVE '+generatedAt+'</span><br>synced with your Google Sheet';
 }
-function jsonpLive(){                       // CORS-proof fallback: <script> tag injection
+function liveUrl(){
+  try{return (localStorage.getItem('pfcApiUrl')||APPS_SCRIPT_URL_DEFAULT||"").trim();}catch(e){return APPS_SCRIPT_URL_DEFAULT;}
+}
+function setLiveUrl(){
+  let cur=liveUrl();
+  const u=prompt("Paste your Apps Script web-app /exec URL\n(Apps Script > Deploy > New deployment > Web app > Execute as Me > Access: Anyone)",cur||"https://script.google.com/macros/s/XXXX/exec");
+  if(u===null)return;
+  const v=u.trim();
+  if(v&&!/^https:\/\/script\.google(usercontent)?\.com\/.+\/exec/.test(v)){alert("That does not look like an Apps Script /exec URL. Saved anyway — remove it via this dialog if wrong.");}
+  try{localStorage.setItem('pfcApiUrl',v);}catch(e){}
+  if(v)refreshLive();
+}
+function jsonpLive(url){                       // CORS-proof fallback: <script> tag injection
   return new Promise((res,rej)=>{
     const fn="pfcLive_"+Date.now();
     const t=setTimeout(()=>{cleanup();rej(new Error("JSONP timeout — check web-app access is 'Anyone'"));},30000);
     function cleanup(){clearTimeout(t);delete window[fn];sc.remove();}
     window[fn]=j=>{cleanup();res(j);};
     const sc=document.createElement("script");
-    sc.src=APPS_SCRIPT_URL+"?days=30&callback="+fn;
+    sc.src=url+"?days=30&callback="+fn;
     sc.onerror=()=>{cleanup();rej(new Error("Script load blocked — redeploy web app with access: Anyone"));};
     document.body.appendChild(sc);
   });
 }
 async function refreshLive(){
-  if(!APPS_SCRIPT_URL){alert("Live mode not configured.\n\n1) In the PFC Radar One Apps Script (v6.4): Deploy > New deployment > Web app (execute as Me, access: Anyone).\n2) Paste the /exec URL into APPS_SCRIPT_URL at the top of this file.\n\nUntil then, this page shows the embedded 30-day snapshot.");return;}
+  const url=liveUrl();
+  if(!url){setLiveUrl();return;}             // first click: ask for the URL, remember it
   const btn=document.getElementById('liveBtn');btn.disabled=true;btn.textContent="Fetching…";
   try{
-    const r=await fetch(APPS_SCRIPT_URL+"?days=30",{redirect:"follow"});
+    const r=await fetch(url+"?days=30",{redirect:"follow"});
     applyLive(await r.json());
   }catch(e1){
-    try{ applyLive(await jsonpLive()); }     // browsers on GitHub Pages often block the fetch path; JSONP works
-    catch(e2){alert("Live refresh failed.\nfetch: "+e1.message+"\nJSONP: "+e2.message+"\n\nFix: Apps Script > Deploy > Manage deployments > Edit > Who has access: Anyone (not 'Anyone with Google account') > Deploy, then use the NEW /exec URL.");}
+    try{ applyLive(await jsonpLive(url)); }  // browsers on GitHub Pages often block the fetch path; JSONP works
+    catch(e2){alert("Live refresh failed.\nfetch: "+e1.message+"\nJSONP: "+e2.message+"\n\nFix: Apps Script > Deploy > Manage deployments > Edit > Who has access: Anyone (not 'Anyone with Google account') > Deploy, use the NEW /exec URL, then click the \u2699 button to update it here.");}
   }
   btn.disabled=false;btn.textContent="\u21BB Live refresh";
 }
@@ -435,7 +462,7 @@ function render(keepScroll){
   }).join('');
 
   // period + importance chips
-  document.getElementById('periodChips').innerHTML=[[1,"Today"],[7,"7D"],[30,"30D"],[0,"All"]]
+  document.getElementById('periodChips').innerHTML=[[1,"Daily"],[7,"Weekly"],[30,"30-Day"],[0,"All"]]
     .map(([d,lab])=>'<button class="chip'+(period===d?' on':'')+'" onclick="period='+d+';setPage();render()">'+lab+'</button>').join('');
   document.getElementById('impChips').innerHTML=["High","Medium","Low"]
     .map(i=>'<button class="chip'+(imps.has(i)?' on-'+i:'')+'" onclick="imps.has(\''+i+'\')?imps.delete(\''+i+'\'):imps.add(\''+i+'\');setPage();render()">'+i+'</button>').join('');
@@ -505,6 +532,7 @@ document.addEventListener('keydown',e=>{if(e.key==="Enter"&&!document.getElement
   try{if(localStorage.getItem('pfcTheme')==='dark')toggleTheme();}catch(e){}
   if(LOGIN_ID&&PASSCODE){try{if(sessionStorage.getItem('pfcGate')!=='1')document.getElementById('gate').classList.remove('hide');}catch(e){document.getElementById('gate').classList.remove('hide');}}
   loadEmbedded();
+  if(liveUrl())setTimeout(refreshLive,400);   // URL saved earlier -> auto-sync with the sheet on every page load
 })();
 </script>
 </body>
