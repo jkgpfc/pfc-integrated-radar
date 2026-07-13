@@ -376,12 +376,12 @@ function isDup(a,b){
 function sim(a,b){if(!a.length||!b.length)return 0;const sb=new Set(b);let n=0;a.forEach(w=>{if(sb.has(w))n++;});return n/Math.min(a.length,b.length);}
 
 /* ---------- live mode ---------- */
-function applyLive(j){
+function applyLive(j,via){
   if(!j||!j.items)throw new Error("Unexpected response");
-  items=j.items; RECOMPUTE=false; generatedAt=(j.generatedAt||"").slice(0,16).replace("T"," ");
-  srcNote="Live from Google Sheet"+(j.total?" ("+j.total+" served)":"");
+  items=j.items; RECOMPUTE=false; generatedAt=(j.publishedAt||j.generatedAt||"").slice(0,16).replace("T"," ");
   enrich(); buildFilters(); setPage(); render();
-  document.getElementById('srcInfo').innerHTML='<b>'+items.length+'</b> items &middot; <span style="color:var(--lo);font-weight:700">\u25CF LIVE '+generatedAt+'</span><br>synced with your Google Sheet';
+  document.getElementById('srcInfo').innerHTML='<b>'+items.length+'</b> items &middot; <span style="color:var(--lo);font-weight:700">\u25CF LIVE '+generatedAt+'</span><br>'+
+    (via==="published"?"auto-synced from published data.json":"synced via Apps Script API");
 }
 function liveUrl(){
   try{return (localStorage.getItem('pfcApiUrl')||APPS_SCRIPT_URL_DEFAULT||"").trim();}catch(e){return APPS_SCRIPT_URL_DEFAULT;}
@@ -407,16 +407,25 @@ function jsonpLive(url){                       // CORS-proof fallback: <script> 
     document.body.appendChild(sc);
   });
 }
-async function refreshLive(){
-  const url=liveUrl();
-  if(!url){setLiveUrl();return;}             // first click: ask for the URL, remember it
+async function tryDataJson(){
+  // Primary path: data.json published into this repo by the Apps Script —
+  // same-origin, no CORS, works on every device.
+  const r=await fetch("data.json?cb="+Date.now(),{cache:"no-store"});
+  if(!r.ok)throw new Error("data.json HTTP "+r.status);
+  return await r.json();
+}
+async function refreshLive(quiet){
   const btn=document.getElementById('liveBtn');btn.disabled=true;btn.textContent="Fetching…";
-  try{
-    const r=await fetch(url+"?days=30",{redirect:"follow"});
-    applyLive(await r.json());
-  }catch(e1){
-    try{ applyLive(await jsonpLive(url)); }  // browsers on GitHub Pages often block the fetch path; JSONP works
-    catch(e2){alert("Live refresh failed.\nfetch: "+e1.message+"\nJSONP: "+e2.message+"\n\nFix: Apps Script > Deploy > Manage deployments > Edit > Who has access: Anyone (not 'Anyone with Google account') > Deploy, use the NEW /exec URL, then click the \u2699 button to update it here.");}
+  let done=false;
+  try{ applyLive(await tryDataJson(),"published"); done=true; }catch(e0){
+    const url=liveUrl();
+    if(url){
+      try{ const r=await fetch(url+"?days=30",{redirect:"follow"}); applyLive(await r.json(),"api"); done=true; }
+      catch(e1){ try{ applyLive(await jsonpLive(url),"api"); done=true; }catch(e2){} }
+    }
+    if(!done&&!quiet){
+      alert("Live refresh failed on all paths.\n\nEASIEST FIX (no web app needed):\n1) Sheet menu > Classification & tools > Set GitHub token\n2) Settings tab > GITHUB_REPO = owner/repo of this site\n3) Menu > Publish data to GitHub now\nThe page then updates itself on every open.\n\n(Alternative: deploy the web app with access 'Anyone' and set its /exec URL via the \u2699 button.)");
+    }
   }
   btn.disabled=false;btn.textContent="\u21BB Live refresh";
 }
@@ -532,7 +541,7 @@ document.addEventListener('keydown',e=>{if(e.key==="Enter"&&!document.getElement
   try{if(localStorage.getItem('pfcTheme')==='dark')toggleTheme();}catch(e){}
   if(LOGIN_ID&&PASSCODE){try{if(sessionStorage.getItem('pfcGate')!=='1')document.getElementById('gate').classList.remove('hide');}catch(e){document.getElementById('gate').classList.remove('hide');}}
   loadEmbedded();
-  if(liveUrl())setTimeout(refreshLive,400);   // URL saved earlier -> auto-sync with the sheet on every page load
+  setTimeout(function(){refreshLive(true);},300);   // silent auto-sync on every open: data.json first, then API
 })();
 </script>
 </body>
