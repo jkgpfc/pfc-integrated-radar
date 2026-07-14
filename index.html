@@ -241,10 +241,17 @@ function rateDir(t){const l=t.toLowerCase();
 function inrDir(t){const l=t.toLowerCase();
   if(/rupee (falls|fell|weakens|slides|slips|hits? .*low|depreciat)/.test(l))return"WEAKER";
   if(/rupee (gains|strengthens|rises|rose|recovers|appreciat)/.test(l))return"STRONGER";return"";}
-const ADVERSE=/nclt|insolven|default|downgrade|penalt|curtail|terminat|cancel|stress|fraud|probe|fire|blast|outage|shutdown|shut down|halt|stall/i;
-const PROGRESS=/commission|synchronis|synchroniz|\bcod\b|commercial operation|financial closure|first (power|unit)|inaugurat/i;
+const ADVERSE=/\bnclt\b|insolven|bankrupt|\bdefault(s|ed|ing)?\b|payment delay|unpaid dues|mounting dues|overdue|downgrad|penalt|curtail|terminat(e|es|ed|ion)|cancell?(s|ed|ation)?\b|scrapp?ed\b|stressed asset|\bfraud\b|\bprobe[sd]?\b|investigat|\braid(s|ed)?\b|\bfire\b(?! safety| fighting| drill)|explosion|\bblast\b(?! furnace)|accident|\boutage\b|shutdown|shuts? down|\bhalt(s|ed|ing)?\b|\bstall(s|ed|ing)\b|\bstrikes?\b(?! (price|a deal|deal|pact|agreement|partnership))|force majeure|\bnpa\b/i;
+const CONSUMER_OUTAGE=/power cut|load ?shedding|blackout|residents|households|consumers? (face|hit)|areas? (to|will) face|scheduled maintenance/i;
+function adverseHit(t){
+  if(!ADVERSE.test(t))return false;
+  if(CONSUMER_OUTAGE.test(t)&&!/plant|unit \d|\bloan\b|\bdues\b|default|nclt|insolven|fraud|downgrad|financ/i.test(t))return false;
+  return true;                                  // consumer load-shedding is not a credit event
+}
+const PROGRESS=/\bcommission(s|ed|ing)\b|synchronis|synchroniz|\bcod\b|commercial operation|financial closure|first (power|unit)|inaugurat/i;
+const PROGRESS_OLD=/commission|synchronis|synchroniz|\bcod\b|commercial operation|financial closure|first (power|unit)|inaugurat/i;
 function actOf(t){return /raises?|bonds?|borrow|\becb\b|notes?|\bncd\b|fund ?rais/i.test(t)?"Borrowing":/sanction|disburs|lend|loan to|finance[sd]?/i.test(t)?"Lending / Business":"Other";}
-function watchType(t){return ADVERSE.test(t)?"ADVERSE / Halt":CAPEX_RE.test(t)?"New Capex / Lending Lead":PROGRESS.test(t)?"Progress":"Activity";}
+function watchType(t){return adverseHit(t)?"ADVERSE / Halt":CAPEX_RE.test(t)?"New Capex / Lending Lead":PROGRESS.test(t)?"Progress":"Activity";}
 function instOf(t){const l=t.toLowerCase();
   if(/green bond/.test(l))return"Green bond"; if(/masala/.test(l))return"Masala bond";
   if(/dollar bond|yankee/.test(l))return"USD bond"; if(/54ec|capital gain/.test(l))return"54EC bond";
