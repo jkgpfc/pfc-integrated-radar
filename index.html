@@ -243,6 +243,19 @@ function inrDir(t){const l=t.toLowerCase();
   if(/rupee (gains|strengthens|rises|rose|recovers|appreciat)/.test(l))return"STRONGER";return"";}
 const ADVERSE=/\bnclt\b|insolven|bankrupt|\bdefault(s|ed|ing)?\b|payment delay|unpaid dues|mounting dues|overdue|downgrad|penalt|curtail|terminat(e|es|ed|ion)|cancell?(s|ed|ation)?\b|scrapp?ed\b|stressed asset|\bfraud\b|\bprobe[sd]?\b|investigat|\braid(s|ed)?\b|\bfire\b(?! safety| fighting| drill)|explosion|\bblast\b(?! furnace)|accident|\boutage\b|shutdown|shuts? down|\bhalt(s|ed|ing)?\b|\bstall(s|ed|ing)\b|\bstrikes?\b(?! (price|a deal|deal|pact|agreement|partnership))|force majeure|\bnpa\b/i;
 const CONSUMER_OUTAGE=/power cut|load ?shedding|blackout|residents|households|consumers? (face|hit)|areas? (to|will) face|scheduled maintenance/i;
+const CE_IBC=/\bnclt\b|\bnclat\b|insolven(cy|t)|\bibc\b|\bcirp\b|corporate insolvency|resolution plan|resolution professional|committee of creditors|moratorium|liquidat(e|es|ed|ion|or)|winding[- ]up/i;
+const CE_FRAUD=/\bfraud\b|forensic audit|red[- ]flagged account|\bsfio\b|enforcement directorate|attaches assets|\bcbi\b (probe|fir)|siphon|diversion of funds|money launder|auditor (resigns?|quits?)|going concern|accounting irregularit/i;
+const CE_RECOVERY=/wil+ful defaulter|\bsarfaesi\b|debt recovery tribunal|takes? possession|e[- ]auction|invoke[sd]?\b[^.]{0,25}guarantee|pledged shares? invoked|\bnpa\b|non[- ]performing/i;
+const CE_RESTRUCT=/one[- ]time settlement|\bots\b|debt (recast|restructur\w*)|haircut|\bsma[- ]?[012]\b|special mention account|resolution framework/i;
+const CE_DOWNGRADE=/downgrade[sd]?|rating (cut|lowered|revised down)|negative (outlook|watch)|junk (status|grade)/i;
+function creditEvent(t){
+  if(CE_IBC.test(t))return "NCLT / IBC";
+  if(CE_FRAUD.test(t))return "Fraud / Forensic";
+  if(CE_RECOVERY.test(t))return "Wilful Default / Recovery";
+  if(CE_RESTRUCT.test(t))return "Restructuring / OTS";
+  if(CE_DOWNGRADE.test(t))return "Rating Downgrade";
+  return "";
+}
 function adverseHit(t){
   if(!ADVERSE.test(t))return false;
   if(CONSUMER_OUTAGE.test(t)&&!/plant|unit \d|\bloan\b|\bdues\b|default|nclt|insolven|fraud|downgrad|financ/i.test(t))return false;
@@ -251,7 +264,7 @@ function adverseHit(t){
 const PROGRESS=/\bcommission(s|ed|ing)\b|synchronis|synchroniz|\bcod\b|commercial operation|financial closure|first (power|unit)|inaugurat/i;
 const PROGRESS_OLD=/commission|synchronis|synchroniz|\bcod\b|commercial operation|financial closure|first (power|unit)|inaugurat/i;
 function actOf(t){return /raises?|bonds?|borrow|\becb\b|notes?|\bncd\b|fund ?rais/i.test(t)?"Borrowing":/sanction|disburs|lend|loan to|finance[sd]?/i.test(t)?"Lending / Business":"Other";}
-function watchType(t){return adverseHit(t)?"ADVERSE / Halt":CAPEX_RE.test(t)?"New Capex / Lending Lead":PROGRESS.test(t)?"Progress":"Activity";}
+function watchType(t){return creditEvent(t)||(adverseHit(t)?"ADVERSE / Halt":CAPEX_RE.test(t)?"New Capex / Lending Lead":PROGRESS.test(t)?"Progress":"Activity");}
 function instOf(t){const l=t.toLowerCase();
   if(/green bond/.test(l))return"Green bond"; if(/masala/.test(l))return"Masala bond";
   if(/dollar bond|yankee/.test(l))return"USD bond"; if(/54ec|capital gain/.test(l))return"54EC bond";
