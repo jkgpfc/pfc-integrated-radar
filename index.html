@@ -8,14 +8,14 @@
 /* ============ TOKENS ============ */
 :root{
   --paper:#F6F4EE; --panel:#FFFFFF; --ink:#1B2430; --muted:#6B7280; --line:#DCD7CB;
-  --bus:#B8860B; --watch:#B94A43; --borr:#2E7D6F; --tre:#3F6FA3;
+  --bus:#B8860B; --watch:#B94A43; --borr:#2E7D6F; --tre:#3F6FA3; --comp:#0F5C8C;
   --hi:#B3261E; --md:#9A6A00; --lo:#3D6B45;
   --hi-bg:#F8E3E1; --md-bg:#F6ECD4; --lo-bg:#E2EEE4;
   --chip:#EFEBE0; --shadow:0 1px 3px rgba(27,36,48,.08);
 }
 [data-theme="dark"]{
   --paper:#0E1B2C; --panel:#152538; --ink:#E8EDF4; --muted:#8FA1B5; --line:#25384F;
-  --bus:#E0B14D; --watch:#E07B72; --borr:#5BC0AC; --tre:#7FA8D9;
+  --bus:#E0B14D; --watch:#E07B72; --borr:#5BC0AC; --tre:#7FA8D9; --comp:#6FB6E8;
   --hi:#FF8A80; --md:#F2C464; --lo:#8FD3A0;
   --hi-bg:#3A2226; --md-bg:#37301C; --lo-bg:#1E3226;
   --chip:#1D3145; --shadow:0 1px 3px rgba(0,0,0,.35);
@@ -44,7 +44,7 @@ header{position:sticky;top:0;z-index:9;background:var(--paper);
 
 /* ============ RADAR STRIP (signature) ============ */
 .strip{max-width:1180px;margin:18px auto 0;padding:0 20px;
-  display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+  display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
 .seg{position:relative;border:1px solid var(--line);border-left:5px solid var(--seg,#999);
   background:var(--panel);border-radius:10px;padding:12px 14px;cursor:pointer;
   text-align:left;box-shadow:var(--shadow);transition:transform .12s ease}
@@ -56,6 +56,7 @@ header{position:sticky;top:0;z-index:9;background:var(--paper);
 .seg .hml b{color:var(--hi)}
 .seg[data-r="BUSINESS"]{--seg:var(--bus)} .seg[data-r="WATCH"]{--seg:var(--watch)}
 .seg[data-r="BORROWING"]{--seg:var(--borr)} .seg[data-r="TREASURY"]{--seg:var(--tre)}
+.seg[data-r="COMPETITOR"]{--seg:var(--comp)}
 .seg[data-r="ALL"]{--seg:var(--ink)}
 
 /* ============ FILTER RAIL ============ */
@@ -81,6 +82,7 @@ main{max-width:1180px;margin:0 auto 60px;padding:0 20px}
   border-radius:10px;padding:14px 16px;margin-bottom:10px;box-shadow:var(--shadow)}
 .card[data-r="BUSINESS"]{--seg:var(--bus)} .card[data-r="WATCH"]{--seg:var(--watch)}
 .card[data-r="BORROWING"]{--seg:var(--borr)} .card[data-r="TREASURY"]{--seg:var(--tre)}
+.card[data-r="COMPETITOR"]{--seg:var(--comp)}
 .cline{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
 .badge{font-size:10px;font-weight:900;letter-spacing:.6px;text-transform:uppercase;
   border-radius:99px;padding:3px 10px}
@@ -136,7 +138,7 @@ main{max-width:1180px;margin:0 auto 60px;padding:0 20px}
 </div>
 
 <header>
-  <div class="masthead">PFC Radar One<small>Business &middot; Borrower Watch &middot; Borrowing &middot; Treasury</small></div>
+  <div class="masthead">PFC Radar One<small>Potential Business &middot; Borrower Watch &middot; Borrowing &middot; Treasury &middot; Competitor</small></div>
   <div class="hspace"></div>
   <div class="src" id="srcInfo"></div>
   <button class="hbtn" id="liveBtn" onclick="refreshLive()" title="Fetch latest from the Google Sheet web app">&#8635; Live refresh</button>
@@ -151,9 +153,11 @@ main{max-width:1180px;margin:0 auto 60px;padding:0 20px}
   <input type="search" id="q" placeholder="Search headline, source, entity&hellip;" oninput="setPage();render()">
   <span class="chips pchips" id="periodChips"></span>
   <span class="chips" id="impChips"></span>
-  <select id="fState" onchange="setPage();render()" title="State (Business)"></select>
-  <select id="fSector" onchange="setPage();render()" title="Sector (Business)"></select>
-  <select id="fTheme" onchange="setPage();render()" title="Theme (Treasury)"></select>
+  <select id="fState"  onchange="setPage();render()" title="State"></select>
+  <select id="fSector" onchange="setPage();render()" title="Sector / Product"></select>
+  <select id="fTheme"  onchange="setPage();render()" title="Treasury Keywords"></select>
+  <select id="fSub"    onchange="setPage();render()" title="Sub-filter"></select>
+  <select id="fClass"  onchange="setPage();render()" title="Class"></select>
   <select id="sortBy" onchange="setPage();render()">
     <option value="imp">Sort: Importance</option>
     <option value="date">Sort: Newest</option>
@@ -170,7 +174,7 @@ main{max-width:1180px;margin:0 auto 60px;padding:0 20px}
   <button class="more hide" id="moreBtn" onclick="page++;render(true)">Show more</button>
   <div class="empty hide" id="empty">No items match the current filters.<span id="emptyWhy"></span></div>
   <div style="text-align:center;color:var(--muted);font-size:11px;padding:26px 0 0;border-top:1px solid var(--line);margin-top:30px">
-    PFC Radar One v7.8 &middot; classification engine mirrored from the Google Sheet pipeline &middot; auto-generated intelligence, verify before circulation
+    PFC Radar One v8.0 &middot; classification engine mirrored from the Google Sheet pipeline &middot; auto-generated intelligence, verify before circulation
   </div>
 </main>
 
@@ -239,6 +243,7 @@ function inrDir(t){const l=t.toLowerCase();
   if(/rupee (gains|strengthens|rises|rose|recovers|appreciat)/.test(l))return"STRONGER";return"";}
 const ADVERSE=/nclt|insolven|default|downgrade|penalt|curtail|terminat|cancel|stress|fraud|probe|fire|blast|outage|shutdown|shut down|halt|stall/i;
 const PROGRESS=/commission|synchronis|synchroniz|\bcod\b|commercial operation|financial closure|first (power|unit)|inaugurat/i;
+function actOf(t){return /raises?|bonds?|borrow|\becb\b|notes?|\bncd\b|fund ?rais/i.test(t)?"Borrowing":/sanction|disburs|lend|loan to|finance[sd]?/i.test(t)?"Lending / Business":"Other";}
 function watchType(t){return ADVERSE.test(t)?"ADVERSE / Halt":CAPEX_RE.test(t)?"New Capex / Lending Lead":PROGRESS.test(t)?"Progress":"Activity";}
 function instOf(t){const l=t.toLowerCase();
   if(/green bond/.test(l))return"Green bond"; if(/masala/.test(l))return"Masala bond";
@@ -350,7 +355,7 @@ function scoreItem(it){
 }
 
 /* ---------- state ---------- */
-const RADARS=[["ALL","All Radars"],["BUSINESS","Business"],["WATCH","Borrower Watch"],["BORROWING","Borrowing"],["TREASURY","Treasury"]];
+const RADARS=[["ALL","All Radars"],["BUSINESS","Potential Business"],["WATCH","Borrower Watch"],["BORROWING","Borrowing"],["TREASURY","Treasury"],["COMPETITOR","Competitor"]];
 const IMP_RANK={High:0,Medium:1,Low:2};
 let items=[], generatedAt="", srcNote="";
 let radar="ALL", period=30, imps=new Set(["High","Medium","Low"]), page=1;
@@ -373,7 +378,9 @@ function enrich(){
     if(it.r==="BUSINESS"){it.state=stateOf(it.t);it.sector=sectorOf(it.t);it.mw=mwOf(it.t);}
     if(it.r==="TREASURY"){it.theme=(it.x&&it.x.th)||themeOf(it.t);it.rt=(it.x&&it.x.rt)||rateDir(it.t);it.inr=(it.x&&it.x.inr)||inrDir(it.t);}
     if(it.r==="WATCH"){it.wtype=watchType(it.t);}
-    if(it.r==="BORROWING"){it.inst=(it.x&&it.x.inst)||instOf(it.t);}
+    if(it.r==="BORROWING"){it.inst=(it.x&&it.x.inst)||instOf(it.t);it.icls=(it.x&&it.x.icls)||"";it.cpn=(it.x&&it.x.cpn)||"";}
+    if(it.r==="WATCH"){it.sub=(it.x&&it.x.sub)||it.wtype;it.cls=(it.x&&it.x.cls)||"";}
+    if(it.r==="COMPETITOR"){it.comp=(it.x&&it.x.comp)||"";it.act=(it.x&&it.x.act)||actOf(it.t);}
     if(RECOMPUTE||!it.i) it.i=scoreItem(it);
     if(it.r==="WATCH"&&!it.pfcb&&it.i==="High") it.i="Medium";   // unverified borrower: cannot be a High watch item
     it.tk=toks(it.t);
@@ -473,18 +480,49 @@ function within(it){
   }
   const q=document.getElementById('q').value.trim().toLowerCase();
   if(q&&!(it.t.toLowerCase().includes(q)||(it.s||"").toLowerCase().includes(q)))return false;
-  const fs=val('fState'),fc=val('fSector'),ft=val('fTheme');
+  const fs=val('fState'),fc=val('fSector'),ft=val('fTheme'),fsub=val('fSub'),fcl=val('fClass');
   if(fs&&it.r==="BUSINESS"&&it.state!==fs)return false;
   if(fc&&it.r==="BUSINESS"&&it.sector!==fc)return false;
   if(ft&&it.r==="TREASURY"&&it.theme!==ft)return false;
+  if(fsub&&it.r==="WATCH"&&it.sub!==fsub)return false;
+  if(fsub&&it.r==="COMPETITOR"&&it.act!==fsub)return false;
+  if(fcl&&it.r==="WATCH"&&it.cls!==fcl)return false;
+  if(fcl&&it.r==="BORROWING"&&it.icls!==fcl)return false;
   return true;
 }
 function val(id){const e=document.getElementById(id);return e.value==="*"?"":e.value;}
+/* Filters appear ONLY where they mean something:
+     Potential Business -> State, Sector / Product
+     Borrower Watch     -> Sub-type (NCLT/IBC, Rating Downgrade, Borrowing by Borrower...) + Class
+     Borrowing          -> Issuer class (PFC, Competitor, Bank top-10, NBFC, AAA corporate, MDB, RBI)
+     Treasury           -> Treasury Keywords
+     Competitor         -> Activity (Borrowings vs Lending / Business)                            */
+const FILTER_MAP={BUSINESS:['fState','fSector'],WATCH:['fSub','fClass'],BORROWING:['fClass'],
+                  TREASURY:['fTheme'],COMPETITOR:['fSub'],ALL:[]};
+function uniq(pred,get){return [...new Set(items.filter(pred).map(get).filter(Boolean))].sort();}
 function buildFilters(){
-  fill('fState',"All states",[...new Set(items.filter(i=>i.r==="BUSINESS").map(i=>i.state))].sort());
-  fill('fSector',"All sectors",[...new Set(items.filter(i=>i.r==="BUSINESS").map(i=>i.sector))].sort());
-  fill('fTheme',"All themes",[...new Set(items.filter(i=>i.r==="TREASURY").map(i=>i.theme))].sort());
+  fill('fState',"All states",uniq(i=>i.r==="BUSINESS",i=>i.state));
+  fill('fSector',"All sectors / products",uniq(i=>i.r==="BUSINESS",i=>i.sector));
+  fill('fTheme',"All treasury keywords",uniq(i=>i.r==="TREASURY",i=>i.theme));
+  applyFilterVisibility();
 }
+function applyFilterVisibility(){
+  const show=FILTER_MAP[radar]||[];
+  ['fState','fSector','fTheme','fSub','fClass'].forEach(id=>{
+    const el=document.getElementById(id), on=show.includes(id);
+    el.classList.toggle('hide',!on);
+    if(!on) el.value='*';
+  });
+  if(radar==="WATCH"){
+    fill('fSub',"All sub-types",uniq(i=>i.r==="WATCH",i=>i.sub));
+    fill('fClass',"State + Private",uniq(i=>i.r==="WATCH",i=>i.cls));
+  }else if(radar==="COMPETITOR"){
+    fill('fSub',"Borrowings + Lending",uniq(i=>i.r==="COMPETITOR",i=>i.act));
+  }else if(radar==="BORROWING"){
+    fill('fClass',"All issuers",uniq(i=>i.r==="BORROWING",i=>i.icls));
+  }
+}
+function pickRadar(r){radar=r;applyFilterVisibility();setPage();render();}
 function fill(id,label,arr){
   const e=document.getElementById(id);
   e.innerHTML='<option value="*">'+label+'</option>'+arr.map(v=>'<option>'+esc(v)+'</option>').join('');
@@ -498,7 +536,7 @@ function render(keepScroll){
   strip.innerHTML=RADARS.map(([r,name])=>{
     const pool=items.filter(it=>(r==="ALL"||it.r===r)&&imps.has(it.i)&&(period<=0||new Date(it.d).getTime()>=Date.now()-period*864e5));
     const h=pool.filter(i=>i.i==="High").length,m=pool.filter(i=>i.i==="Medium").length,l=pool.filter(i=>i.i==="Low").length;
-    return '<button class="seg'+(radar===r?' active':'')+'" data-r="'+r+'" onclick="radar=\''+r+'\';setPage();render()">'+
+    return '<button class="seg'+(radar===r?' active':'')+'" data-r="'+r+'" onclick="pickRadar(\''+r+'\')">'+
       '<h3>'+name+'</h3><div class="total">'+pool.length+'</div>'+
       '<div class="hml"><b>'+h+' High</b> &middot; '+m+' Med &middot; '+l+' Low</div></button>';
   }).join('');
@@ -535,9 +573,10 @@ function card(it){
   const pills=[];
   const P=(k,v)=>v&&pills.push('<span class="pill"><b>'+k+'</b>'+esc(v)+'</span>');
   if(it.r==="BUSINESS"){P("Sector",it.sector);P("State",it.state);P("\u20B9Cr",it.cr&&it.cr.toLocaleString('en-IN'));P("MW",it.mw&&it.mw.toLocaleString('en-IN'));}
-  if(it.r==="WATCH"){P("Type",it.wtype);P("\u20B9Cr",it.cr&&it.cr.toLocaleString('en-IN'));}
-  if(it.r==="BORROWING"){P("Instrument",it.inst);P("Amount",(it.x&&it.x.amt)||(it.cr&&"\u2248 \u20B9"+it.cr.toLocaleString('en-IN')+" cr"));P("Tenor",it.x&&it.x.ten);}
-  if(it.r==="TREASURY"){P("Theme",it.theme);P("Rates",it.rt);P("INR",it.inr);}
+  if(it.r==="WATCH"){P("Sub-type",it.sub||it.wtype);P("Class",it.cls);P("\u20B9Cr",it.cr&&it.cr.toLocaleString('en-IN'));}
+  if(it.r==="COMPETITOR"){P("Competitor",it.comp);P("Activity",it.act);P("\u20B9Cr",it.cr&&it.cr.toLocaleString('en-IN'));}
+  if(it.r==="BORROWING"){P("Issuer",it.icls);P("Coupon",it.cpn);P("Instrument",it.inst);P("Amount",(it.x&&it.x.amt)||(it.cr&&"\u2248 \u20B9"+it.cr.toLocaleString('en-IN')+" cr"));P("Tenor",it.x&&it.x.ten);}
+  if(it.r==="TREASURY"){P("Keyword",it.theme);P("Rates",it.rt);P("INR",it.inr);}
   if(it.pfcb)pills.push('<span class="pill" style="background:var(--watch);color:#fff">PFC BORROWER</span>');
   if(it.nsrc>1)pills.push('<span class="pill">'+it.nsrc+' sources</span>');
   P("Feed",it.f);
