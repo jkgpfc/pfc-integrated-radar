@@ -307,6 +307,9 @@ const CAPEX_RE=/approves?\b[^.]{0,45}(investment|capex|project|expansion)|board 
 const NOISE_RE=/\bopinion\b|editorial|explainer|explained\b|what is |what are |why (is|are|does|did) |how (to|does|did) |top \d+|list of|here's|in charts|decoded|faq/i;
 const PRICE_RE=/share price|stock (price|rises|falls|jumps)|intraday|target price|buy or sell|multibagger|q[1-4] (results|earnings)|net profit (rises|falls|up|down)/i;
 const OUTLOOK_RE=/\boutlook\b|forecasts?\b|analysis:|study says|report says|survey/i;
+const EQUITY_RESEARCH_RE=/\(rating (downgrade|upgrade)\)|downgraded from (buy|hold|sell|overweight|neutral)|upgraded from (buy|hold|sell|underweight|neutral)|\b(buy|hold|sell|overweight|underweight|neutral) rating\b|price target|target price|valuation concerns?|rally is overextended|seeking alpha|analyst (downgrade|upgrade)|fair value estimate/i;
+const RATING_AGENCY_RE=/\bcrisil\b|\bicra\b|care ratings|india ratings|moody'?s|standard & poor|\bs&p\b|\bfitch\b/i;
+const ENTITY_SECTOR_RE=/\bpower\b|energy|electricity|infrastructur|\binfra\b|discom|genco|transco|utility|transmission|renewable|thermal|hydro|solar|\bwind (power|energy|farm)\b|\bnbfc\b|lender|\bbanks?\b|financ|\bsteel\b|cement|highway|\bport\b|airport|metro|refiner|\bcoal\b/i;
 const RETAIL_RE=/gold (price|rate)s?|silver (price|rate)s?|bullion|petrol (price|rate)|diesel (price|rate)|mutual fund|kisan vikas patra|small savings|post office scheme|\bppf\b|\bnsc\b|dividend yield|how should (you|investors)|should you (buy|invest|switch)|what it means for (you|your)|your (money|savings|emi|loan)|common man|retirement corpus|tax[- ]saving/i;
 const ADVICE_RE=/mutual fund investors|home loan|\bemi\b|should you|what it means for (you|investors)|your (loan|emi|money|savings)|personal finance|fixed deposit|common man|impacts? (you|your)|find out here|here'?s (how|what|why)|check (july|august|latest) rates|how should|strategy after/i;
 const QUESTION_RE=/\?\s*$|^(will|should|can|is|are|why|how|what)\b/i;
@@ -391,7 +394,13 @@ function loadEmbedded(){
 }
 let RECOMPUTE = true;   // regrade embedded snapshot with v6.3 engine; live data keeps sheet grades
 function enrich(){
-  items=items.filter(it=>!foreignNoise(it)&&!STOCKTIP_RE.test(it.t)&&!TIP_EXTRA_RE.test(it.t)&&!EQUITY_RE.test(it.t)&&!RETAIL_RE.test(it.t)&&!(SOFT_TIP_RE.test(it.t)&&!SUBSTANCE_RE.test(it.t)));
+  items=items.filter(it=>!foreignNoise(it)&&!STOCKTIP_RE.test(it.t)&&!TIP_EXTRA_RE.test(it.t)&&!EQUITY_RE.test(it.t)&&!RETAIL_RE.test(it.t)&&!EQUITY_RESEARCH_RE.test(it.t)&&!(SOFT_TIP_RE.test(it.t)&&!SUBSTANCE_RE.test(it.t)));
+  // a downgrade only belongs to PFC's universe (borrower / promoter / Indian power-infra player)
+  items=items.filter(it=>{
+    if(it.r!=="WATCH")return true;
+    if(!/downgrad|rating (cut|lowered)|negative (outlook|watch)/i.test(it.t))return true;
+    return it.pfcb||NAMES_RE.test(it.t)||(ENTITY_SECTOR_RE.test(it.t)&&RATING_AGENCY_RE.test(it.t));
+  });
   items.forEach(it=>{
     it.pfcb = CODES_RE.test(it.t)||NAMES_RE.test(it.t);
     it.cr = (it.x&&it.x.cr)||amountCr(it.t);
