@@ -439,10 +439,12 @@ function enrich(){
 const SRC_TIER=[
   [/reuters|bloomberg|financial times|\bft\.com|\bwsj|wall street journal|nikkei/i,1],
   [/economic times|business standard|livemint|\bmint\b|the hindu|hindu businessline|businessline|moneycontrol|\bpti\b|press trust|financial express/i,2],
-  [/times of india|hindustan times|\bndtv|cnbc|\bet now|business today|outlook|forbes india|the print|scroll|\bmint\b|indian express/i,3],
+  [/cnbc ?tv18|cnbctv18|cnbc-tv18|zee business|\bet now\b/i,2],
+  [/times of india|hindustan times|\bndtv|business today|outlook|forbes india|the print|scroll|indian express|news18|firstpost|the wire|deccan/i,3],
   [/bse|nse|sebi|rbi|\.gov|\.nic\.in|exchange filing|regulatory filing|company (statement|release)|press release|pib/i,1],
   [/power ?line|mercom|saur energy|energyworld|etenergyworld|renewable ?watch|windpower|pv-magazine|jmk|bridge to india/i,2]
 ];
+function srcLabel(rank){return rank<=1?'Wire / Filing':rank===2?'Major':rank===3?'National':'Other';}
 function srcRank(it){
   const s=(it.s||'')+' '+(it.l||'');
   let best=5;
@@ -456,8 +458,9 @@ function toks(t){
 }
 function isDup(a,b){
   const s=sim(a.tk,b.tk);
-  const ea=leadEntity(a.tk), eb=leadEntity(b.tk);
-  if(ea&&eb&&ea!==eb)return false;                 // two different named entities are never the same story
+  const ea=leadEntities(a.tk), eb=leadEntities(b.tk);
+  if(ea.size&&eb.size){ let shared=false; for(const e of ea)if(eb.has(e))shared=true;
+    if(!shared)return false; }                     // different entity sets -> never the same story
   if(s>=0.62)return true;
   if(a.cr&&b.cr&&a.cr===b.cr&&a.cr>=50){
     // Identical amount is a signal, but NOT sufficient: many distinct Rs 5,000-cr
@@ -471,22 +474,23 @@ function isDup(a,b){
 /* Same amount alone is not enough (many different Rs 5,000-cr deals exist).
    Merge only if the two items ALSO share the SAME lead entity — otherwise they
    are distinct stories that happen to carry the same figure. */
-const ENTITY_HINT=/ntpc|npcil|nhpc|nlc|sjvn|thdc|neepco|powergrid|pfc|rec\b|ireda|hudco|irfc|nabfid|iifcl|adani|tata|jsw|jindal|vedanta|torrent|reliance|gmr|essar|renew|greenko|avaada|acme|suzlon|sterlite|birla|mahindra|larsen|\bl&t\b|sbi|hdfc|icici|axis|kotak|bajaj|shriram|coal india|gail|ongc|ntpc green|nhai/;
-function leadEntity(tk){
-  const j=tk.join(' ');
-  const m=j.match(ENTITY_HINT);
-  return m?m[0]:null;
+const ENTITY_HINT=/ntpc|npcil|nhpc|nlc|sjvn|thdc|neepco|nlcil|bhel|sail|gail|ongc|iocl|bpcl|hpcl|nhai|ircon|rvnl|nbcc|coal india|nlc|sjvn|thdc|neepco|powergrid|pfc|rec\b|ireda|hudco|irfc|nabfid|iifcl|adani|tata|jsw|jindal|vedanta|torrent|reliance|gmr|essar|renew|greenko|avaada|acme|suzlon|sterlite|birla|mahindra|larsen|\bl&t\b|sbi|hdfc|icici|axis|kotak|bajaj|shriram|coal india|gail|ongc|ntpc green|nhai/;
+function leadEntities(tk){
+  const j=tk.join(' '), out=new Set(); let m;
+  const re=new RegExp(ENTITY_HINT.source,'gi');
+  while((m=re.exec(j))!==null) out.add(m[0].toLowerCase());
+  return out;                                   // e.g. {"ntpc","npcil"} for a JV headline
 }
+function leadEntity(tk){const s=leadEntities(tk);return s.size?[...s][0]:null;}
 const SECTOR_TOK=/nuclear|thermal|transmission|discom|refinery|metro|railway|hydro/;
 function shareKey(a,b){
-  const ea=leadEntity(a.tk), eb=leadEntity(b.tk);
-  if(ea&&eb)return ea===eb;                        // both name an entity: merge only if it's the SAME one
-  if(ea||eb){                                      // exactly one side names an entity (govt headline vs company)
-    const sa=new Set(a.tk);
-    return b.tk.some(w=>SECTOR_TOK.test(w)&&sa.has(w));   // tie via shared distinctive sector word
+  const ea=leadEntities(a.tk), eb=leadEntities(b.tk);
+  if(ea.size&&eb.size){
+    for(const e of ea)if(eb.has(e))return true;   // shared entity (NTPC-NPCIL vs NPCIL-NTPC) -> same story
+    return false;                                  // different entities, same amount -> distinct
   }
-  // neither side names an entity: both are govt/"India ..." items. Need a shared
-  // sector word AND it must be the same one (nuclear==nuclear, not nuclear/metro).
+  // at least one side is entity-less (a govt/"India ..." headline). Same amount is
+  // already established; a shared distinctive SECTOR word ties them to one story.
   const sa=new Set(a.tk);
   return b.tk.some(w=>SECTOR_TOK.test(w)&&sa.has(w));
 }
@@ -595,6 +599,7 @@ function buildFilters(){
   fill('fState',"All states",uniq(i=>i.r==="BUSINESS",i=>i.state));
   fill('fSector',"All sectors / products",uniq(i=>i.r==="BUSINESS",i=>i.sector));
   fill('fTheme',"All treasury keywords",uniq(i=>i.r==="TREASURY",i=>i.theme));
+  fill('fSrc',"All sources",["Wire / Filing","Major","National","Other"]);
   applyFilterVisibility();
 }
 function applyFilterVisibility(){
@@ -673,15 +678,19 @@ function card(it){
   if(it.r==="BORROWING"){P("Issuer",it.icls);P("Coupon",it.cpn);P("Instrument",it.inst);P("Amount",(it.x&&it.x.amt)||(it.cr&&"\u2248 \u20B9"+it.cr.toLocaleString('en-IN')+" cr"));P("Tenor",it.x&&it.x.ten);}
   if(it.r==="TREASURY"){P("Keyword",it.theme);P("Rates",it.rt);P("INR",it.inr);}
   if(it.pfcb)pills.push('<span class="pill" style="background:var(--watch);color:#fff">PFC BORROWER</span>');
-  if(it.nsrc>1)pills.push('<span class="pill">'+it.nsrc+' sources</span>');
-  P("Feed",it.f);
   const note=it.x&&(it.x.ben||it.x.imp)?'<div class="note">'+esc(it.x.ben||it.x.imp)+(it.x.hed?' &middot; <i>'+esc(it.x.hed)+'</i>':'')+'</div>':'';
+  const rk=srcRank(it);
+  const srcLine='<div class="srcline">'+
+    '<span class="outlet t'+rk+'">'+esc(it.s||'Unknown source')+'</span>'+
+    '<span class="tier">'+srcLabel(rk)+'</span>'+
+    (it.nsrc>1?'<span class="nsrc">+'+(it.nsrc-1)+' more '+(it.nsrc-1===1?'source':'sources')+'</span>':'')+
+    (it.f?'<span class="feed">via '+esc(it.f)+'</span>':'')+'</div>';
   return '<article class="card" data-r="'+it.r+'"><div class="cline">'+
     '<span class="badge b-'+it.i+'">'+it.i+'</span>'+
     '<span class="rtag">'+it.r+'</span>'+
-    (it.s?'<span class="pill">'+esc(it.s)+'</span>':'')+
     '<span class="cdate mono">'+esc(it.d)+'</span></div>'+
     '<a class="title" href="'+esc(it.l)+'" target="_blank" rel="noopener">'+esc(it.t)+'</a>'+
+    srcLine+
     '<div class="pills">'+pills.join('')+'</div>'+note+'</article>';
 }
 
