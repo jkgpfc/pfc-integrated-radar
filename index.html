@@ -174,7 +174,7 @@ main{max-width:1180px;margin:0 auto 60px;padding:0 20px}
   <button class="more hide" id="moreBtn" onclick="page++;render(true)">Show more</button>
   <div class="empty hide" id="empty">No items match the current filters.<span id="emptyWhy"></span></div>
   <div style="text-align:center;color:var(--muted);font-size:11px;padding:26px 0 0;border-top:1px solid var(--line);margin-top:30px">
-    PFC Radar One v8.4 &middot; classification engine mirrored from the Google Sheet pipeline &middot; auto-generated intelligence, verify before circulation
+    PFC Radar One v8.5 &middot; classification engine mirrored from the Google Sheet pipeline &middot; auto-generated intelligence, verify before circulation
   </div>
 </main>
 
@@ -288,7 +288,7 @@ function isIndian(t){return INDIA_RE.test(t)||NAMES_RE.test(t)||CODES_RE.test(t)
 const MDB_RE=/world bank|asian development bank|\badb\b|aiib|\bndb\b|jica|\bkfw\b|\beib\b|jbic|green climate fund|export credit/i;
 function foreignNoise(it){
   if(SYSTEMIC_RE.test(it.t))return false;           // Fed/ECB/BoJ/BoE/China/oil move PFC's cost of funds
-  if(MDB_RE.test(it.t)&&!FOREIGN_RE.test(it.t))return false;   // MDB window with no foreign borrower named
+  if(MDB_RE.test(it.t)&&isIndian(it.t))return false;          // v8.5: MDB counts only when it is FOR India
   // Business / Borrower Watch / Borrowing need an India nexus, full stop.
   if(it.r!=="TREASURY")return !isIndian(it.t);      // kills Harley-Davidson, Ohio airports, Saudi cabinet
   return FOREIGN_RE.test(it.t)&&!isIndian(it.t);    // Treasury: only non-systemic foreign macro is noise
