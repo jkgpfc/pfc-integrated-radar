@@ -524,7 +524,7 @@ function isDup(a,b){
 /* Same amount alone is not enough (many different Rs 5,000-cr deals exist).
    Merge only if the two items ALSO share the SAME lead entity — otherwise they
    are distinct stories that happen to carry the same figure. */
-const ENTITY_HINT=/\b(?:ntpc|npcil|nhpc|nlcil|nlc|sjvn|thdc|neepco|bhel|sail|gail|ongc|iocl|bpcl|hpcl|nhai|ircon|rvnl|nbcc|powergrid|pfc|rec|ireda|hudco|irfc|nabfid|iifcl|adani|tata|jsw|jindal|vedanta|torrent|reliance|gmr|essar|renew|greenko|avaada|acme|suzlon|sterlite|birla|mahindra|larsen|sbi|hdfc|icici|axis|kotak|bajaj|shriram|coalindia)\b/;
+const ENTITY_HINT=/\b(?:ntpc|npcil|nhpc|nlcil|nlc|sjvn|thdc|neepco|bhel|sail|gail|ongc|iocl|bpcl|hpcl|nhai|ircon|rvnl|nbcc|powergrid|pfc|rec|ireda|hudco|irfc|nabfid|iifcl|adani|tata|jsw|jindal|vedanta|torrent|reliance|gmr|essar|renew|greenko|avaada|acme|suzlon|sterlite|birla|mahindra|larsen|sbi|hdfc|icici|axis|kotak|bajaj|shriram|coalindia|seci|secl)\b|world bank|asian development bank|\badb\b|\baiib\b|\bjica\b|\bkfw\b|\beib\b|\bifc\b/;
 function leadEntities(tk){
   const out=new Set();
   const re=new RegExp(ENTITY_HINT.source,'gi');
@@ -538,12 +538,18 @@ function leadEntities(tk){
   return out;                                    // e.g. {"ntpc","npcil"} for a JV headline
 }
 function leadEntity(tk){const s=leadEntities(tk);return s.size?[...s][0]:null;}
-const SECTOR_TOK=/nuclear|thermal|transmission|discom|refinery|metro|railway|hydro/;
+const SECTOR_TOK=/nuclear|thermal|transmission|discom|refinery|metro|railway|hydro|solar|rooftop|wind|renewable|battery|storage|hydrogen|smart ?meter|coal|substation|grid/;
 function shareKey(a,b){
   const ea=leadEntities(a.tk), eb=leadEntities(b.tk);
   if(ea.size&&eb.size){
-    for(const e of ea)if(eb.has(e))return true;   // shared entity (NTPC-NPCIL vs NPCIL-NTPC) -> same story
-    return false;                                  // different entities, same amount -> distinct
+    let shared=false;
+    for(const e of ea)if(eb.has(e))shared=true;
+    if(!shared)return false;                       // different entities, same amount -> distinct
+    // same entity + same amount: also need a shared sector word OR decent overlap,
+    // so two DIFFERENT deals by the same entity for the same sum stay separate.
+    const sa=new Set(a.tk);
+    if(b.tk.some(w=>SECTOR_TOK.test(w)&&sa.has(w)))return true;
+    return sim(a.tk,b.tk)>=0.35;
   }
   // at least one side is entity-less (a govt/"India ..." headline). Same amount is
   // already established; a shared distinctive SECTOR word ties them to one story.
