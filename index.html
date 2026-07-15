@@ -474,12 +474,18 @@ function isDup(a,b){
 /* Same amount alone is not enough (many different Rs 5,000-cr deals exist).
    Merge only if the two items ALSO share the SAME lead entity — otherwise they
    are distinct stories that happen to carry the same figure. */
-const ENTITY_HINT=/ntpc|npcil|nhpc|nlc|sjvn|thdc|neepco|nlcil|bhel|sail|gail|ongc|iocl|bpcl|hpcl|nhai|ircon|rvnl|nbcc|coal india|nlc|sjvn|thdc|neepco|powergrid|pfc|rec\b|ireda|hudco|irfc|nabfid|iifcl|adani|tata|jsw|jindal|vedanta|torrent|reliance|gmr|essar|renew|greenko|avaada|acme|suzlon|sterlite|birla|mahindra|larsen|\bl&t\b|sbi|hdfc|icici|axis|kotak|bajaj|shriram|coal india|gail|ongc|ntpc green|nhai/;
+const ENTITY_HINT=/\b(?:ntpc|npcil|nhpc|nlcil|nlc|sjvn|thdc|neepco|bhel|sail|gail|ongc|iocl|bpcl|hpcl|nhai|ircon|rvnl|nbcc|powergrid|pfc|rec|ireda|hudco|irfc|nabfid|iifcl|adani|tata|jsw|jindal|vedanta|torrent|reliance|gmr|essar|renew|greenko|avaada|acme|suzlon|sterlite|birla|mahindra|larsen|sbi|hdfc|icici|axis|kotak|bajaj|shriram|coalindia)\b/;
 function leadEntities(tk){
-  const j=tk.join(' '), out=new Set(); let m;
+  const out=new Set();
   const re=new RegExp(ENTITY_HINT.source,'gi');
-  while((m=re.exec(j))!==null) out.add(m[0].toLowerCase());
-  return out;                                   // e.g. {"ntpc","npcil"} for a JV headline
+  let m, guard=0;
+  const j=tk.join(' ');
+  while((m=re.exec(j))!==null){
+    if(m.index===re.lastIndex)re.lastIndex++;    // zero-width guard: prevents an infinite loop
+    if(m[0])out.add(m[0].toLowerCase().replace(/[^a-z0-9&]/g,''));
+    if(++guard>50)break;                          // hard stop, belt and braces
+  }
+  return out;                                    // e.g. {"ntpc","npcil"} for a JV headline
 }
 function leadEntity(tk){const s=leadEntities(tk);return s.size?[...s][0]:null;}
 const SECTOR_TOK=/nuclear|thermal|transmission|discom|refinery|metro|railway|hydro/;
