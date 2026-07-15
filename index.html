@@ -8,14 +8,14 @@
 /* ============ TOKENS ============ */
 :root{
   --paper:#F6F4EE; --panel:#FFFFFF; --ink:#1B2430; --muted:#6B7280; --line:#DCD7CB;
-  --bus:#B8860B; --watch:#B94A43; --borr:#2E7D6F; --tre:#3F6FA3; --comp:#0F5C8C;
+  --bus:#B8860B; --watch:#B94A43; --borr:#2E7D6F; --tre:#3F6FA3; --comp:#0F5C8C; --reg:#6A4A1F;
   --hi:#B3261E; --md:#9A6A00; --lo:#3D6B45;
   --hi-bg:#F8E3E1; --md-bg:#F6ECD4; --lo-bg:#E2EEE4;
   --chip:#EFEBE0; --shadow:0 1px 3px rgba(27,36,48,.08);
 }
 [data-theme="dark"]{
   --paper:#0E1B2C; --panel:#152538; --ink:#E8EDF4; --muted:#8FA1B5; --line:#25384F;
-  --bus:#E0B14D; --watch:#E07B72; --borr:#5BC0AC; --tre:#7FA8D9; --comp:#6FB6E8;
+  --bus:#E0B14D; --watch:#E07B72; --borr:#5BC0AC; --tre:#7FA8D9; --comp:#6FB6E8; --reg:#C9A34E;
   --hi:#FF8A80; --md:#F2C464; --lo:#8FD3A0;
   --hi-bg:#3A2226; --md-bg:#37301C; --lo-bg:#1E3226;
   --chip:#1D3145; --shadow:0 1px 3px rgba(0,0,0,.35);
@@ -44,7 +44,7 @@ header{position:sticky;top:0;z-index:9;background:var(--paper);
 
 /* ============ RADAR STRIP (signature) ============ */
 .strip{max-width:1180px;margin:18px auto 0;padding:0 20px;
-  display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+  display:grid;grid-template-columns:repeat(7,1fr);gap:7px}
 .seg{position:relative;border:1px solid var(--line);border-left:5px solid var(--seg,#999);
   background:var(--panel);border-radius:10px;padding:12px 14px;cursor:pointer;
   text-align:left;box-shadow:var(--shadow);transition:transform .12s ease}
@@ -57,6 +57,7 @@ header{position:sticky;top:0;z-index:9;background:var(--paper);
 .seg[data-r="BUSINESS"]{--seg:var(--bus)} .seg[data-r="WATCH"]{--seg:var(--watch)}
 .seg[data-r="BORROWING"]{--seg:var(--borr)} .seg[data-r="TREASURY"]{--seg:var(--tre)}
 .seg[data-r="COMPETITOR"]{--seg:var(--comp)}
+.seg[data-r="REGULATORY"]{--seg:var(--reg)}
 .seg[data-r="ALL"]{--seg:var(--ink)}
 
 /* ============ FILTER RAIL ============ */
@@ -83,6 +84,7 @@ main{max-width:1180px;margin:0 auto 60px;padding:0 20px}
 .card[data-r="BUSINESS"]{--seg:var(--bus)} .card[data-r="WATCH"]{--seg:var(--watch)}
 .card[data-r="BORROWING"]{--seg:var(--borr)} .card[data-r="TREASURY"]{--seg:var(--tre)}
 .card[data-r="COMPETITOR"]{--seg:var(--comp)}
+.card[data-r="REGULATORY"]{--seg:var(--reg)}
 .cline{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
 .badge{font-size:10px;font-weight:900;letter-spacing:.6px;text-transform:uppercase;
   border-radius:99px;padding:3px 10px}
@@ -138,7 +140,7 @@ main{max-width:1180px;margin:0 auto 60px;padding:0 20px}
 </div>
 
 <header>
-  <div class="masthead">PFC Radar One<small>Potential Business &middot; Borrower Watch &middot; Borrowing &middot; Treasury &middot; Competitor</small></div>
+  <div class="masthead">PFC Radar One<small>Potential Business &middot; Borrower Watch &middot; Borrowing &middot; Treasury &middot; Competitor &middot; Regulatory</small></div>
   <div class="hspace"></div>
   <div class="src" id="srcInfo"></div>
   <button class="hbtn" id="liveBtn" onclick="refreshLive()" title="Fetch latest from the Google Sheet web app">&#8635; Live refresh</button>
@@ -158,6 +160,8 @@ main{max-width:1180px;margin:0 auto 60px;padding:0 20px}
   <select id="fTheme"  onchange="setPage();render()" title="Treasury Keywords"></select>
   <select id="fSub"    onchange="setPage();render()" title="Sub-filter"></select>
   <select id="fClass"  onchange="setPage();render()" title="Class"></select>
+  <select id="fReg"    onchange="setPage();render()" title="Regulator"></select>
+  <select id="fRegTheme" onchange="setPage();render()" title="Compliance theme"></select>
   <select id="sortBy" onchange="setPage();render()">
     <option value="imp">Sort: Importance</option>
     <option value="date">Sort: Newest</option>
@@ -174,7 +178,7 @@ main{max-width:1180px;margin:0 auto 60px;padding:0 20px}
   <button class="more hide" id="moreBtn" onclick="page++;render(true)">Show more</button>
   <div class="empty hide" id="empty">No items match the current filters.<span id="emptyWhy"></span></div>
   <div style="text-align:center;color:var(--muted);font-size:11px;padding:26px 0 0;border-top:1px solid var(--line);margin-top:30px">
-    PFC Radar One v8.6 &middot; classification engine mirrored from the Google Sheet pipeline &middot; auto-generated intelligence, verify before circulation
+    PFC Radar One v8.7 &middot; classification engine mirrored from the Google Sheet pipeline &middot; auto-generated intelligence, verify before circulation
   </div>
 </main>
 
@@ -378,7 +382,7 @@ function scoreItem(it){
 }
 
 /* ---------- state ---------- */
-const RADARS=[["ALL","All Radars"],["BUSINESS","Potential Business"],["WATCH","Borrower Watch"],["BORROWING","Borrowing"],["TREASURY","Treasury"],["COMPETITOR","Competitor"]];
+const RADARS=[["ALL","All Radars"],["BUSINESS","Potential Business"],["WATCH","Borrower Watch"],["BORROWING","Borrowing"],["TREASURY","Treasury"],["COMPETITOR","Competitor"],["REGULATORY","Regulatory"]];
 const IMP_RANK={High:0,Medium:1,Low:2};
 let items=[], generatedAt="", srcNote="";
 let radar="ALL", period=30, imps=new Set(["High","Medium","Low"]), page=1;
@@ -410,11 +414,12 @@ function enrich(){
     if(it.r==="BORROWING"){it.inst=(it.x&&it.x.inst)||instOf(it.t);it.icls=(it.x&&it.x.icls)||"";it.cpn=(it.x&&it.x.cpn)||"";}
     if(it.r==="WATCH"){it.sub=(it.x&&it.x.sub)||it.wtype;it.cls=(it.x&&it.x.cls)||"";}
     if(it.r==="COMPETITOR"){it.comp=(it.x&&it.x.comp)||"";it.act=(it.x&&it.x.act)||actOf(it.t);}
+    if(it.r==="REGULATORY"){it.reg=(it.x&&it.x.reg)||"";it.rth=(it.x&&it.x.th)||"";it.inst=(it.x&&it.x.inst)||"";it.appl=(it.x&&it.x.appl)||"";it.due=(it.x&&it.x.due)||"";}
     if(RECOMPUTE||!it.i) it.i=scoreItem(it);
     if(it.r==="WATCH"&&!it.pfcb&&it.i==="High") it.i="Medium";   // unverified borrower: cannot be a High watch item
     it.tk=toks(it.t);
   });
-  const PRIO={WATCH:0,BUSINESS:1,BORROWING:2,TREASURY:3,COMPETITOR:4};
+  const PRIO={WATCH:0,REGULATORY:1,COMPETITOR:2,BUSINESS:3,BORROWING:4,TREASURY:5};
   // Best source first, then radar priority, then importance: the survivor of a
   // duplicate group is the most authoritative outlet's copy.
   const ordered=[...items].sort((a,b)=>
@@ -571,6 +576,9 @@ function within(it){
   if(fsub&&it.r==="COMPETITOR"&&it.act!==fsub)return false;
   if(fcl&&it.r==="WATCH"&&it.cls!==fcl)return false;
   if(fcl&&it.r==="BORROWING"&&it.icls!==fcl)return false;
+  const freg=val('fReg'),frth=val('fRegTheme');
+  if(freg&&it.r==="REGULATORY"&&it.reg!==freg)return false;
+  if(frth&&it.r==="REGULATORY"&&it.rth!==frth)return false;
   return true;
 }
 function val(id){const e=document.getElementById(id);return e.value==="*"?"":e.value;}
@@ -581,7 +589,7 @@ function val(id){const e=document.getElementById(id);return e.value==="*"?"":e.v
      Treasury           -> Treasury Keywords
      Competitor         -> Activity (Borrowings vs Lending / Business)                            */
 const FILTER_MAP={BUSINESS:['fState','fSector'],WATCH:['fSub','fClass'],BORROWING:['fClass'],
-                  TREASURY:['fTheme'],COMPETITOR:['fSub'],ALL:[]};
+                  TREASURY:['fTheme'],COMPETITOR:['fSub'],REGULATORY:['fReg','fRegTheme'],ALL:[]};
 function uniq(pred,get){return [...new Set(items.filter(pred).map(get).filter(Boolean))].sort();}
 function buildFilters(){
   fill('fState',"All states",uniq(i=>i.r==="BUSINESS",i=>i.state));
@@ -591,7 +599,7 @@ function buildFilters(){
 }
 function applyFilterVisibility(){
   const show=FILTER_MAP[radar]||[];
-  ['fState','fSector','fTheme','fSub','fClass'].forEach(id=>{
+  ['fState','fSector','fTheme','fSub','fClass','fReg','fRegTheme'].forEach(id=>{
     const el=document.getElementById(id), on=show.includes(id);
     el.classList.toggle('hide',!on);
     if(!on) el.value='*';
@@ -603,6 +611,9 @@ function applyFilterVisibility(){
     fill('fSub',"Borrowings + Lending",uniq(i=>i.r==="COMPETITOR",i=>i.act));
   }else if(radar==="BORROWING"){
     fill('fClass',"All issuers",uniq(i=>i.r==="BORROWING",i=>i.icls));
+  }else if(radar==="REGULATORY"){
+    fill('fReg',"All regulators",uniq(i=>i.r==="REGULATORY",i=>i.reg));
+    fill('fRegTheme',"All themes",uniq(i=>i.r==="REGULATORY",i=>i.rth));
   }
 }
 function pickRadar(r){radar=r;applyFilterVisibility();setPage();render();}
@@ -658,6 +669,7 @@ function card(it){
   if(it.r==="BUSINESS"){P("Sector",it.sector);P("State",it.state);P("\u20B9Cr",it.cr&&it.cr.toLocaleString('en-IN'));P("MW",it.mw&&it.mw.toLocaleString('en-IN'));}
   if(it.r==="WATCH"){P("Sub-type",it.sub||it.wtype);P("Class",it.cls);P("\u20B9Cr",it.cr&&it.cr.toLocaleString('en-IN'));}
   if(it.r==="COMPETITOR"){P("Competitor",it.comp);P("Activity",it.act);P("\u20B9Cr",it.cr&&it.cr.toLocaleString('en-IN'));}
+  if(it.r==="REGULATORY"){P("Regulator",it.reg);P("Type",it.inst);P("Applies as",it.appl);P("Theme",it.rth);if(it.due&&it.due!=="Not stated")P("Due",it.due);}
   if(it.r==="BORROWING"){P("Issuer",it.icls);P("Coupon",it.cpn);P("Instrument",it.inst);P("Amount",(it.x&&it.x.amt)||(it.cr&&"\u2248 \u20B9"+it.cr.toLocaleString('en-IN')+" cr"));P("Tenor",it.x&&it.x.ten);}
   if(it.r==="TREASURY"){P("Keyword",it.theme);P("Rates",it.rt);P("INR",it.inr);}
   if(it.pfcb)pills.push('<span class="pill" style="background:var(--watch);color:#fff">PFC BORROWER</span>');
