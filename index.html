@@ -174,7 +174,7 @@ main{max-width:1180px;margin:0 auto 60px;padding:0 20px}
   <button class="more hide" id="moreBtn" onclick="page++;render(true)">Show more</button>
   <div class="empty hide" id="empty">No items match the current filters.<span id="emptyWhy"></span></div>
   <div style="text-align:center;color:var(--muted);font-size:11px;padding:26px 0 0;border-top:1px solid var(--line);margin-top:30px">
-    PFC Radar One v8.5 &middot; classification engine mirrored from the Google Sheet pipeline &middot; auto-generated intelligence, verify before circulation
+    PFC Radar One v8.6 &middot; classification engine mirrored from the Google Sheet pipeline &middot; auto-generated intelligence, verify before circulation
   </div>
 </main>
 
@@ -414,15 +414,35 @@ function enrich(){
     if(it.r==="WATCH"&&!it.pfcb&&it.i==="High") it.i="Medium";   // unverified borrower: cannot be a High watch item
     it.tk=toks(it.t);
   });
-  const PRIO={WATCH:0,BUSINESS:1,BORROWING:2,TREASURY:3};
-  const ordered=[...items].sort((a,b)=>(PRIO[a.r]-PRIO[b.r])||((IMP_RANK[a.i]??3)-(IMP_RANK[b.i]??3)));
+  const PRIO={WATCH:0,BUSINESS:1,BORROWING:2,TREASURY:3,COMPETITOR:4};
+  // Best source first, then radar priority, then importance: the survivor of a
+  // duplicate group is the most authoritative outlet's copy.
+  const ordered=[...items].sort((a,b)=>
+    (srcRank(a)-srcRank(b))||(PRIO[a.r]-PRIO[b.r])||((IMP_RANK[a.i]??3)-(IMP_RANK[b.i]??3)));
   const kept=[];
   ordered.forEach(it=>{
-    const dup=kept.find(k=>isDup(k,it));          // v7.1: dedupe ACROSS radars, most specific home wins
-    if(dup){dup.nsrc=(dup.nsrc||1)+1;if((IMP_RANK[it.i]??3)<(IMP_RANK[dup.i]??3))dup.i=it.i;}
-    else kept.push(it);
+    const dup=kept.find(k=>isDup(k,it));
+    if(dup){
+      dup.nsrc=(dup.nsrc||1)+1;
+      if((IMP_RANK[it.i]??3)<(IMP_RANK[dup.i]??3))dup.i=it.i;   // carry the highest importance seen
+    } else kept.push(it);
   });
   items=kept;
+}
+/* v8.6 — media-house quality tiers (lower rank = more authoritative).
+   When duplicates collapse, the copy from the best outlet is the survivor. */
+const SRC_TIER=[
+  [/reuters|bloomberg|financial times|\bft\.com|\bwsj|wall street journal|nikkei/i,1],
+  [/economic times|business standard|livemint|\bmint\b|the hindu|hindu businessline|businessline|moneycontrol|\bpti\b|press trust|financial express/i,2],
+  [/times of india|hindustan times|\bndtv|cnbc|\bet now|business today|outlook|forbes india|the print|scroll|\bmint\b|indian express/i,3],
+  [/bse|nse|sebi|rbi|\.gov|\.nic\.in|exchange filing|regulatory filing|company (statement|release)|press release|pib/i,1],
+  [/power ?line|mercom|saur energy|energyworld|etenergyworld|renewable ?watch|windpower|pv-magazine|jmk|bridge to india/i,2]
+];
+function srcRank(it){
+  const s=(it.s||'')+' '+(it.l||'');
+  let best=5;
+  SRC_TIER.forEach(([re,r])=>{ if(re.test(s)&&r<best)best=r; });
+  return best;
 }
 function toks(t){
   return String(t).toLowerCase().replace(/,/g,'').replace(/[^a-z0-9 ]/g,' ')
@@ -431,14 +451,48 @@ function toks(t){
 }
 function isDup(a,b){
   const s=sim(a.tk,b.tk);
+  const ea=leadEntity(a.tk), eb=leadEntity(b.tk);
+  if(ea&&eb&&ea!==eb)return false;                 // two different named entities are never the same story
   if(s>=0.62)return true;
   if(a.cr&&b.cr&&a.cr===b.cr&&a.cr>=50){
-    if(a.tk[0]&&a.tk[0]===b.tk[0])return true;   // NTPC + 20457 twice = one story
-    if(s>=0.4)return true;
+    // Identical amount is a signal, but NOT sufficient: many distinct Rs 5,000-cr
+    // deals exist. Merge only if the two items also share the same lead entity or
+    // sector (shareKey). No loose text-similarity fallback here — that was fusing
+    // Adani and Tata just because both said "Power ... crore ... project".
+    if(shareKey(a,b))return true;                // 28,000-cr nuclear tender: WATCH + BUSINESS -> one
   }
   return false;
 }
-function sim(a,b){if(!a.length||!b.length)return 0;const sb=new Set(b);let n=0;a.forEach(w=>{if(sb.has(w))n++;});return n/Math.min(a.length,b.length);}
+/* Same amount alone is not enough (many different Rs 5,000-cr deals exist).
+   Merge only if the two items ALSO share the SAME lead entity — otherwise they
+   are distinct stories that happen to carry the same figure. */
+const ENTITY_HINT=/ntpc|npcil|nhpc|nlc|sjvn|thdc|neepco|powergrid|pfc|rec\b|ireda|hudco|irfc|nabfid|iifcl|adani|tata|jsw|jindal|vedanta|torrent|reliance|gmr|essar|renew|greenko|avaada|acme|suzlon|sterlite|birla|mahindra|larsen|\bl&t\b|sbi|hdfc|icici|axis|kotak|bajaj|shriram|coal india|gail|ongc|ntpc green|nhai/;
+function leadEntity(tk){
+  const j=tk.join(' ');
+  const m=j.match(ENTITY_HINT);
+  return m?m[0]:null;
+}
+const SECTOR_TOK=/nuclear|thermal|transmission|discom|refinery|metro|railway|hydro/;
+function shareKey(a,b){
+  const ea=leadEntity(a.tk), eb=leadEntity(b.tk);
+  if(ea&&eb)return ea===eb;                        // both name an entity: merge only if it's the SAME one
+  if(ea||eb){                                      // exactly one side names an entity (govt headline vs company)
+    const sa=new Set(a.tk);
+    return b.tk.some(w=>SECTOR_TOK.test(w)&&sa.has(w));   // tie via shared distinctive sector word
+  }
+  // neither side names an entity: both are govt/"India ..." items. Need a shared
+  // sector word AND it must be the same one (nuclear==nuclear, not nuclear/metro).
+  const sa=new Set(a.tk);
+  return b.tk.some(w=>SECTOR_TOK.test(w)&&sa.has(w));
+}
+const SIM_STOP=new Set(['india','indian','crore','lakh','rupee','\u20b9','plan','plans','project','projects','tender','scheme','programme','program','approve','approves','approved','issue','issues','raise','raises','float','floats','worth','over','via','through','announce','announces','year','new','power','energy','ltd','limited','company','group','the','for','and','with','from','into','said','says']);
+function sim(a,b){
+  const fa=a.filter(w=>!SIM_STOP.has(w)&&!/^\d+$/.test(w));   // drop filler + bare numbers
+  const fb=b.filter(w=>!SIM_STOP.has(w)&&!/^\d+$/.test(w));
+  if(!fa.length||!fb.length)return 0;
+  const sb=new Set(fb);let n=0;fa.forEach(w=>{if(sb.has(w))n++;});
+  return n/Math.min(fa.length,fb.length);
+}
 
 /* ---------- live mode ---------- */
 function applyLive(j,via){
