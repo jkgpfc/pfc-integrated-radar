@@ -140,7 +140,7 @@ main{max-width:1180px;margin:0 auto 60px;padding:0 20px}
 </div>
 
 <header>
-  <div class="masthead">PFC Radar One<small>Potential Business &middot; Borrower Watch &middot; Borrowing &middot; Treasury &middot; Competitor &middot; Regulatory</small></div>
+  <div class="masthead">PFC Radar One<small>Potential Business &middot; Borrower Watch &middot; Corporate Borrowings &middot; Treasury &middot; Competitor Watch &middot; Regulatory</small></div>
   <div class="hspace"></div>
   <div class="src" id="srcInfo"></div>
   <button class="hbtn" id="liveBtn" onclick="refreshLive()" title="Fetch latest from the Google Sheet web app">&#8635; Live refresh</button>
@@ -164,8 +164,8 @@ main{max-width:1180px;margin:0 auto 60px;padding:0 20px}
   <select id="fRegTheme" onchange="setPage();render()" title="Compliance theme"></select>
   <select id="fSrc"    onchange="setPage();render()" title="Source tier"></select>
   <select id="sortBy" onchange="setPage();render()">
-    <option value="imp">Sort: Importance</option>
-    <option value="date">Sort: Newest</option>
+    <option value="date" selected>Sort: Newest</option>
+    <option value="imp">Sort: Priority</option>
     <option value="amt">Sort: Amount</option>
     <option value="source">Sort: Source &#8377;Cr</option>
   </select>
@@ -436,10 +436,10 @@ function scoreItem(it){
 }
 
 /* ---------- state ---------- */
-const RADARS=[["ALL","All Radars"],["BUSINESS","Potential Business"],["WATCH","Borrower Watch"],["BORROWING","Borrowing"],["TREASURY","Treasury"],["COMPETITOR","Competitor"],["REGULATORY","Regulatory"]];
+const RADARS=[["ALL","All Radars"],["BUSINESS","Potential Business"],["WATCH","Borrower Watch"],["BORROWING","Corporate Borrowings"],["TREASURY","Treasury"],["COMPETITOR","Competitor Watch"],["REGULATORY","Regulatory"]];
 const IMP_RANK={High:0,Medium:1,Low:2};
 let items=[], generatedAt="", srcNote="";
-let radar="ALL", period=30, imps=new Set(["High","Medium","Low"]), page=1;
+let radar="ALL", period=30, imps=new Set(["High","Medium","Low"]), page=1;   // sort default = newest (see sortBy)
 const PAGE=25;
 function setPage(){page=1;}
 
@@ -530,6 +530,7 @@ function toks(t){
     .filter(w=>w.length>=3||/^\d+$/.test(w));                    // keep numbers like 15037
 }
 function isDup(a,b){
+  if(a.l&&b.l&&a.l===b.l&&a.r!==b.r)return false;   // intentional cross-post (capex: Watch + Business)
   const s=sim(a.tk,b.tk);
   const ea=leadEntities(a.tk), eb=leadEntities(b.tk);
   if(ea.size&&eb.size){ let shared=false; for(const e of ea)if(eb.has(e))shared=true;
@@ -706,7 +707,14 @@ function applyFilterVisibility(){
     fill('fRegTheme',"All themes",uniq(i=>i.r==="REGULATORY",i=>i.rth));
   }
 }
-function pickRadar(r){radar=r;applyFilterVisibility();setPage();render();}
+function pickRadar(r){
+  radar=r;
+  document.getElementById('q').value='';                       // fresh search per tab
+  ['fState','fSector','fTheme','fSub','fClass','fReg','fRegTheme','fSrc'].forEach(id=>{
+    const el=document.getElementById(id); if(el)el.value='*';
+  });
+  applyFilterVisibility();setPage();render();
+}
 function fill(id,label,arr){
   const e=document.getElementById(id);
   e.innerHTML='<option value="*">'+label+'</option>'+arr.map(v=>'<option>'+esc(v)+'</option>').join('');
