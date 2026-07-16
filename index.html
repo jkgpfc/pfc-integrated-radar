@@ -308,7 +308,10 @@ const CODES_RE=new RegExp('\\b('+PFC_CODES.map(c=>c.replace(/[.*+?^${}()|[\]\\]/
 const NAMES_RE=new RegExp('\\b('+PFC_NAMES.map(n=>n.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|')+')\\b','i');
 const FOREIGN_RE=/\b(texas|kentucky|iowa|ohio|kansas|california|florida|arizona|nevada|oklahoma|virginia|colorado|missouri|alabama|tennessee|wisconsin|minnesota|louisiana|utah|nebraska|idaho|wyoming|dakota|vermont|new hampshire|new jersey|new mexico|pennsylvania|massachusetts|connecticut|michigan|illinois|arkansas|united states|white house|donald trump|biden administration|federal aviation|congress passes|\w+ county\b|congressman|senator\b|puerto rico|canada|canadian|australia|australian|brazil|indonesia|vietnam|philippines|nigeria|kenya|south africa|egypt|saudi arabia|\buae\b|\begypt\b|egyptian|\begp\b|mexico|argentina|chile|thailand|malaysia|bangladesh|pakistan|sri lanka|nepal|germany|france|spain|italy|poland|netherlands|austria|austrian|switzerland|swiss|sweden|norway|denmark|finland|belgium|portugal|greece|ireland|luxembourg|czech|hungary|romania|turkey|israel|qatar|kuwait|oman|bahrain|morocco|ghana|tanzania|zambia|ethiopia|peru|colombia|ecuador|venezuela|panama|taiwan|singapore|hong kong|new zealand|\buk\b|united kingdom|britain|china|chinese|korea)\b/i;
 const INDIA_RE=/\bindia|\bindian\b|\u20B9|\bcrore|\blakh|discom|\barunachal|\btripura\b|\bsikkim\b|meghalaya|manipur|mizoram|nagaland|\bgoa\b|puducherry|chandigarh|chief minister|\bcm\b|ministry of power|\bmnre\b|\bcerc\b|\bcea\b|\bpgcil\b|\bgenco\b|\btransco\b|vidyut|\burja\b|nigam|bharat|hindustan|\bpsu\b|\bnhai\b|\bseci\b|\brbi\b|\bntpc\b|\bnhpc\b|\bpfc\b|\brec\b|ireda|hudco|irfc|nabfid|iifcl|delhi|mumbai|gujarat|rajasthan|maharashtra|karnataka|tamil nadu|telangana|andhra|odisha|uttar pradesh|madhya pradesh|bihar|jharkhand|chhattisgarh|punjab|haryana|kerala|assam|bengal|himachal|uttarakhand|kashmir|ladakh|chennai|hyderabad|bengaluru|kolkata|pune|ahmedabad|noida|lucknow|jaipur|adani|tata|reliance|jsw|jindal|l&t|larsen|mahindra|birla|vedanta|renew|greenko|avaada|acme|suzlon|torrent|sterlite|hindalco|ultratech|waaree|powergrid|coal india|gail|ongc|iocl|bpcl|hpcl|sbi|hdfc|icici|axis bank|nse|bse|sebi|bharti|airtel|indus towers|\bdlf\b|infosys|maruti|shriram|bajaj finance|muthoot|piramal|\biifl\b|yes bank|indusind|federal bank|\bidfc\b|bandhan|ceigall|\bircon\b|\brvnl\b|\bnbcc\b/i;
-function isIndian(t){return INDIA_RE.test(t)||NAMES_RE.test(t)||CODES_RE.test(t);}
+// Indian statutes/regulators/agencies ARE an India marker (mirrors the .gs engine):
+// "NCLT admits plea against Coastal Energen" has no city/state, but NCLT is Indian.
+const INDIA_LEGAL_RE=/\bnclt\b|\bnclat\b|\bibbi\b|\bcirp\b|sarfaesi|debt recovery tribunal|\bsfio\b|\bpmla\b|enforcement directorate|reserve bank of india|\brbi\b|\bsebi\b|\bcerc\b|\bcea\b|\bmnre\b|ministry of power|niti aayog|insolvency and bankruptcy|wil+ful defaulter|\bcrisil\b|\bicra\b|india ratings|care ratings|\bmca\b|\bcbdt\b|\bcbic\b|\bnse\b|\bbse\b/i;
+function isIndian(t){return INDIA_RE.test(t)||NAMES_RE.test(t)||CODES_RE.test(t)||INDIA_LEGAL_RE.test(t);}
 const MDB_RE=/world bank|asian development bank|\badb\b|aiib|\bndb\b|jica|\bkfw\b|\beib\b|jbic|green climate fund|export credit/i;
 function foreignNoise(it){
   if(SYSTEMIC_RE.test(it.t))return false;           // Fed/ECB/BoJ/BoE/China/oil move PFC's cost of funds
@@ -454,6 +457,17 @@ function enrich(){
     if(it.r!=="WATCH")return true;
     if(!/downgrad|rating (cut|lowered)|negative (outlook|watch)/i.test(it.t))return true;
     return it.pfcb||NAMES_RE.test(it.t)||(ENTITY_SECTOR_RE.test(it.t)&&RATING_AGENCY_RE.test(it.t));
+  });
+  // v8.9 — retail-lending NBFCs (home/gold/micro/vehicle/consumer loans) are outside
+  // PFC's universe; their credit events are not our watch. Also drop tiny (<Rs 100 cr)
+  // restructurings at entities we don't track. Applies even to old data.json files.
+  const RETAIL_NBFC_RE=/home loan|housing finance|\bhfc\b|gold loan|microfinance|\bmfi\b|vehicle (finance|loan)|consumer (finance|loan|durable)|personal loan|two[- ]wheeler|affordable housing|education loan/i;
+  items=items.filter(it=>{
+    if(it.r!=="WATCH")return true;
+    if(it.pfcb||NAMES_RE.test(it.t))return true;
+    if(RETAIL_NBFC_RE.test(it.t))return false;
+    if(/restructur|recast|\bots\b|settlement/i.test(it.t)&&it.cr&&it.cr<100)return false;
+    return true;
   });
   items.forEach(it=>{
     it.pfcb = CODES_RE.test(it.t)||NAMES_RE.test(it.t);
