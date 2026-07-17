@@ -193,7 +193,7 @@ main{max-width:1180px;margin:0 auto 60px;padding:0 20px}
   <button class="more hide" id="moreBtn" onclick="page++;render(true)">Show more</button>
   <div class="empty hide" id="empty">No items match the current filters.<span id="emptyWhy"></span></div>
   <div style="text-align:center;color:var(--muted);font-size:11px;padding:26px 0 0;border-top:1px solid var(--line);margin-top:30px">
-    PFC Radar One v9.3 &middot; classification engine mirrored from the Google Sheet pipeline &middot; auto-generated intelligence, verify before circulation
+    PFC Radar One v9.4 &middot; classification engine mirrored from the Google Sheet pipeline &middot; auto-generated intelligence, verify before circulation
   </div>
 </main>
 
@@ -284,7 +284,7 @@ const CE_IBC=/\bnclt\b|\bnclat\b|insolven(cy|t)|\bibc\b|\bcirp\b|corporate insol
 const CE_FRAUD=/\bfraud\b|forensic audit|red[- ]flagged account|\bsfio\b|enforcement directorate|attaches assets|\bcbi\b (probe|fir)|siphon|diversion of funds|money launder|auditor (resigns?|quits?)|going concern|accounting irregularit/i;
 const CE_RECOVERY=/wil+ful defaulter|\bsarfaesi\b|debt recovery tribunal|takes? possession|e[- ]auction|invoke[sd]?\b[^.]{0,25}guarantee|pledged shares? invoked|\bnpa\b|non[- ]performing/i;
 const CE_RESTRUCT=/one[- ]time settlement|\bots\b|debt (recast|restructur\w*)|haircut|\bsma[- ]?[012]\b|special mention account|resolution framework/i;
-const CE_DOWNGRADE=/downgrade[sd]?|rating (cut|lowered|revised down)|negative (outlook|watch)|junk (status|grade)/i;
+const CE_DOWNGRADE=/downgrade[sd]?|rating (cut|lowered|revised down|revised|affirmed?)|(outlook|rating) revised|revised to (negative|stable|positive)|(negative|positive|stable) (outlook|watch)|outlook (revised|changed|to)|placed (on|under) (credit )?watch|junk (status|grade)|(moody'?s|fitch|s&p|crisil|icra|care ratings|india ratings)[^.]{0,40}(revis|affirm|downgrad|upgrad|outlook|rating)/i;
 function creditEvent(t){
   if(CE_IBC.test(t))return "NCLT / IBC";
   if(CE_FRAUD.test(t))return "Fraud / Forensic";
