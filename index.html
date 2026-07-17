@@ -61,7 +61,10 @@ header{position:sticky;top:0;z-index:9;background:var(--paper);
 .seg[data-r="ALL"]{--seg:var(--ink)}
 
 /* ============ FILTER RAIL ============ */
-.rail{max-width:1180px;margin:14px auto;padding:12px 16px;display:flex;gap:10px;flex-wrap:wrap;
+.rrow{display:flex;flex-wrap:wrap;align-items:center;gap:10px;row-gap:10px;width:100%}
+.rrow2{padding-top:10px;border-top:1px solid var(--line)}
+.rail select,.rail input[type=search]{margin:0}
+.rail{flex-direction:column;gap:12px;max-width:1180px;margin:14px auto;padding:12px 16px;display:flex;gap:10px;flex-wrap:wrap;
   align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:12px;
   box-shadow:var(--shadow)}
 .rail input[type=search]{flex:2;min-width:180px;border:1px solid var(--line);border-radius:8px;
@@ -152,9 +155,11 @@ main{max-width:1180px;margin:0 auto 60px;padding:0 20px}
 <nav class="strip" id="strip" aria-label="Radar segments"></nav>
 
 <div class="rail" role="search">
-  <input type="search" id="q" placeholder="Search headline, source, entity&hellip;" oninput="setPage();render()">
-  <span class="chips pchips" id="periodChips"></span>
-  <span class="chips" id="impChips"></span>
+  <div class="rrow">
+    <input type="search" id="q" placeholder="Search headline, source, entity&hellip;" oninput="setPage();render()">
+    <span class="chips pchips" id="periodChips"></span>
+  </div>
+  <div class="rrow rrow2">
   <select id="fState"  onchange="setPage();render()" title="State"></select>
   <select id="fSector" onchange="setPage();render()" title="Sector / Product"></select>
   <select id="fTheme"  onchange="setPage();render()" title="Treasury Keywords"></select>
@@ -167,8 +172,9 @@ main{max-width:1180px;margin:0 auto 60px;padding:0 20px}
     <option value="date" selected>Sort: Newest</option>
     <option value="imp">Sort: Priority</option>
     <option value="amt">Sort: Amount</option>
-    <option value="source">Sort: Source &#8377;Cr</option>
+    <option value="source">Sort: Source</option>
   </select>
+  </div>
 </div>
 
 <main>
@@ -180,7 +186,7 @@ main{max-width:1180px;margin:0 auto 60px;padding:0 20px}
   <button class="more hide" id="moreBtn" onclick="page++;render(true)">Show more</button>
   <div class="empty hide" id="empty">No items match the current filters.<span id="emptyWhy"></span></div>
   <div style="text-align:center;color:var(--muted);font-size:11px;padding:26px 0 0;border-top:1px solid var(--line);margin-top:30px">
-    PFC Radar One v8.8 &middot; classification engine mirrored from the Google Sheet pipeline &middot; auto-generated intelligence, verify before circulation
+    PFC Radar One v9.2 &middot; classification engine mirrored from the Google Sheet pipeline &middot; auto-generated intelligence, verify before circulation
   </div>
 </main>
 
@@ -275,9 +281,9 @@ const CE_DOWNGRADE=/downgrade[sd]?|rating (cut|lowered|revised down)|negative (o
 function creditEvent(t){
   if(CE_IBC.test(t))return "NCLT / IBC";
   if(CE_FRAUD.test(t))return "Fraud / Forensic";
-  if(CE_RECOVERY.test(t))return "Wilful Default / Recovery";
+  if(CE_RECOVERY.test(t))return /wil+ful default/i.test(t)?"Wilful Default":"Recovery / SARFAESI";
   if(CE_RESTRUCT.test(t))return "Restructuring / OTS";
-  if(CE_DOWNGRADE.test(t))return "Rating Downgrade";
+  if(CE_DOWNGRADE.test(t)||/rating (upgrade[sd]?|raised)|upgrades? .{0,30}rating/i.test(t))return "Credit Rating Change";
   return "";
 }
 function adverseHit(t){
@@ -306,7 +312,7 @@ const PFC_CODES=["ABEPL","ABRPL","ACME","ACSPL","AECEPL","AGE23L","AGE25BL","AGE
 const PFC_NAMES=["nhpc","sjvn","thdc","neepco","nlc india","torrent power","cesc","tata power","sembcorp","ayana","hero future","o2 power","fourth partner","amp energy","abepl","abrpl","acme aklera","acme deoghar","acme eco clean","acme eco clean energy","acme jupiter","acme oman","acme oman agghpl","acme phalodi","acme pokhran","acme pokhran solar","acme renewtech","acme sigma urja","acme sikar","acme urja one","adani aesl","adani jaisalmer","adani jharkhand tpp","adani kamuthi","adani new industries","adani renewable energy forty one","adani wind energy kutchh three","age25bl","amplus tumkur solar energy one","ap discoms","apdiscoms","assam bio refinery","avaada mskvy","avaada sustainable urja","bhuj wind energy","buxar tpp","cge hybrid energy","cge ii","cge shree digvijay cement","cge shree digvijay cement green energy","chargezone","chenab valley power projects cvpppl","clean max zeus","clean solar power chitradurga","cleanmax","continuum","csptcl c","cvppl kwar hep","dans energy","dhbvnl rdss loans","dundigal waste 2 energy","dvc mejia tps","essar ports","evey best","fbtl interim collateral release 6 mar","fpel daylight","fpel ujwal","gasml gtsml","gensol","gentari renewables india castor one","gksml for smart metering","gmr upper karnali hydropower","gmtn update dec2024 information documents required for due diligence","goa tamnar transmission project","gopalpur","green energy","greenko sironj","hmespl substitution agreement","hpcl rajasthan refinery","hpcl renewable","hppl preliminary scrutiny report","hpsebl rdss","igtl for gas meter manufacturing","iipl eight beed","iipl one solar","indianoil ntpc green energy","iocl ifsc refinancing","jaipur jindal","jakson power","jdvvnl","jindal jaipur","jindal urban waste management","jsreppl ham road project","jsw mytrah","jswrel j","juniper beta","juniper green beam","juniper green beta","juniper green stellar","juniper green three","juniper group","juniper nirjara","juniper nirjara energy","khorlochhu hydro power","kleio solar power","kosol energie ke","lgepl 3 spvs","mahan energen","mb power","meja urja","mipl pachwara coal mine","mppakvvcl","mspgcl 65 mw solar power project at lakhmapur under re bundling scheme","mspgcl financial assistance of","msrdc sea link msl","mumbai urja marg","mundra petrochem","navinal adani","navinal transmission","nlc talabira tps","northern coalfields","ntpc rel","opera narmada","opera solar energy","opera spv","ostro kannada power","pachwara mdo","patratu vidyut utpadan nigam","punjab state transmission corporation","raj discoms","rajasthan discoms","rajasthan state discoms","rel mskvy 6 spvs","renew agni","renew green","renew mhs","renew mhs1","renew photovoltaics","renew solar energy rajasthan","rosa power","rpscl tra","sandhya hydro","sasan power","saunda mining","sel ntpcrel","serentica renewables india","shongtong karcham hep of hppcl","sikkim urja","sp desal spvs","sp group","sravanthi energy","stpl buxar","suzlon energy psf","talwandi sabo power","tecso charge zone one","tehkhand","tgdiscoms","tgspdcl tgnpdcl","transmission corporation of andhra pradesh","transvolt best nmc","tsgenco yadadri tps","up rvunl","vadhvan port project","vedanta","vedanta athena","veh jayin","veh jayin kleio","veh jayin renewables","vijaya wb","vriddhi energy india","wrsr cod"];
 const CODES_RE=new RegExp('\\b('+PFC_CODES.map(c=>c.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|')+')\\b');       // case-sensitive
 const NAMES_RE=new RegExp('\\b('+PFC_NAMES.map(n=>n.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|')+')\\b','i');
-const FOREIGN_RE=/\b(texas|kentucky|iowa|ohio|kansas|california|florida|arizona|nevada|oklahoma|virginia|colorado|missouri|alabama|tennessee|wisconsin|minnesota|louisiana|utah|nebraska|idaho|wyoming|dakota|vermont|new hampshire|new jersey|new mexico|pennsylvania|massachusetts|connecticut|michigan|illinois|arkansas|united states|white house|donald trump|biden administration|federal aviation|congress passes|\w+ county\b|congressman|senator\b|puerto rico|canada|canadian|australia|australian|brazil|indonesia|vietnam|philippines|nigeria|kenya|south africa|egypt|saudi arabia|\buae\b|\begypt\b|egyptian|\begp\b|mexico|argentina|chile|thailand|malaysia|bangladesh|pakistan|sri lanka|nepal|germany|france|spain|italy|poland|netherlands|austria|austrian|switzerland|swiss|sweden|norway|denmark|finland|belgium|portugal|greece|ireland|luxembourg|czech|hungary|romania|turkey|israel|qatar|kuwait|oman|bahrain|morocco|ghana|tanzania|zambia|ethiopia|peru|colombia|ecuador|venezuela|panama|taiwan|singapore|hong kong|new zealand|\buk\b|united kingdom|britain|china|chinese|korea)\b/i;
+const FOREIGN_RE=/\b(texas|kentucky|iowa|ohio|kansas|california|florida|arizona|nevada|oklahoma|virginia|colorado|missouri|alabama|tennessee|wisconsin|minnesota|louisiana|utah|nebraska|idaho|wyoming|dakota|vermont|new hampshire|new jersey|new mexico|pennsylvania|massachusetts|connecticut|michigan|illinois|arkansas|united states|white house|donald trump|biden administration|federal aviation|congress passes|\w+ county\b|congressman|senator\b|puerto rico|canada|canadian|australia|australian|brazil|indonesia|vietnam|philippines|nigeria|kenya|south africa|egypt|saudi arabia|\buae\b|\begypt\b|egyptian|\begp\b|mexico|argentina|chile|thailand|malaysia|bangladesh|pakistan|sri lanka|nepal|germany|france|spain|italy|poland|netherlands|austria|austrian|switzerland|swiss|sweden|norway|denmark|finland|belgium|portugal|greece|ireland|luxembourg|czech|hungary|romania|turkey|israel|qatar|kuwait|oman|bahrain|morocco|ghana|tanzania|zambia|ethiopia|peru|colombia|ecuador|venezuela|panama|taiwan|singapore|hong kong|new zealand|kazakhstan|uzbekistan|kyrgyzstan|tajikistan|turkmenistan|azerbaijan|mongolia|belarus|ukraine|\buk\b|united kingdom|britain|china|chinese|korea)\b/i;
 const INDIA_RE=/\bindia|\bindian\b|\u20B9|\bcrore|\blakh|discom|\barunachal|\btripura\b|\bsikkim\b|meghalaya|manipur|mizoram|nagaland|\bgoa\b|puducherry|chandigarh|chief minister|\bcm\b|ministry of power|\bmnre\b|\bcerc\b|\bcea\b|\bpgcil\b|\bgenco\b|\btransco\b|vidyut|\burja\b|nigam|bharat|hindustan|\bpsu\b|\bnhai\b|\bseci\b|\brbi\b|\bntpc\b|\bnhpc\b|\bpfc\b|\brec\b|ireda|hudco|irfc|nabfid|iifcl|delhi|mumbai|gujarat|rajasthan|maharashtra|karnataka|tamil nadu|telangana|andhra|odisha|uttar pradesh|madhya pradesh|bihar|jharkhand|chhattisgarh|punjab|haryana|kerala|assam|bengal|himachal|uttarakhand|kashmir|ladakh|chennai|hyderabad|bengaluru|kolkata|pune|ahmedabad|noida|lucknow|jaipur|adani|tata|reliance|jsw|jindal|l&t|larsen|mahindra|birla|vedanta|renew|greenko|avaada|acme|suzlon|torrent|sterlite|hindalco|ultratech|waaree|powergrid|coal india|gail|ongc|iocl|bpcl|hpcl|sbi|hdfc|icici|axis bank|nse|bse|sebi|bharti|airtel|indus towers|\bdlf\b|infosys|maruti|shriram|bajaj finance|muthoot|piramal|\biifl\b|yes bank|indusind|federal bank|\bidfc\b|bandhan|ceigall|\bircon\b|\brvnl\b|\bnbcc\b/i;
 // Indian statutes/regulators/agencies ARE an India marker (mirrors the .gs engine):
 // "NCLT admits plea against Coastal Energen" has no city/state, but NCLT is Indian.
@@ -669,6 +675,8 @@ function within(it){
   const freg=val('fReg'),frth=val('fRegTheme');
   if(freg&&it.r==="REGULATORY"&&it.reg!==freg)return false;
   if(frth&&it.r==="REGULATORY"&&it.rth!==frth)return false;
+  const fsrc=val('fSrc');
+  if(fsrc&&String(it.s||'').trim()!==fsrc)return false;   // universal news-source filter (exact outlet)
   return true;
 }
 function val(id){const e=document.getElementById(id);return e.value==="*"?"":e.value;}
@@ -685,7 +693,10 @@ function buildFilters(){
   fill('fState',"All states",uniq(i=>i.r==="BUSINESS",i=>i.state));
   fill('fSector',"All sectors / products",uniq(i=>i.r==="BUSINESS",i=>i.sector));
   fill('fTheme',"All treasury keywords",uniq(i=>i.r==="TREASURY",i=>i.theme));
-  fill('fSrc',"All sources",["Wire / Filing","Major","National","Other"]);
+  const srcCount={};
+  items.forEach(i=>{const s=(i.s||'').trim();if(s)srcCount[s]=(srcCount[s]||0)+1;});
+  const topSrc=Object.keys(srcCount).sort((a,b)=>srcCount[b]-srcCount[a]).slice(0,40).sort();
+  fill('fSrc',"All sources",topSrc);
   applyFilterVisibility();
 }
 function applyFilterVisibility(){
@@ -734,10 +745,8 @@ function render(keepScroll){
   }).join('');
 
   // period + importance chips
-  document.getElementById('periodChips').innerHTML=[[1,"Daily"],[7,"Weekly"],[30,"30-Day"],[0,"All"]]
+  document.getElementById('periodChips').innerHTML=[[1,"Daily"],[7,"Weekly"],[30,"Monthly"],[90,"Quarterly"]]
     .map(([d,lab])=>'<button class="chip'+(period===d?' on':'')+'" onclick="period='+d+';setPage();render()">'+lab+'</button>').join('');
-  document.getElementById('impChips').innerHTML=["High","Medium","Low"]
-    .map(i=>'<button class="chip'+(imps.has(i)?' on-'+i:'')+'" onclick="imps.has(\''+i+'\')?imps.delete(\''+i+'\'):imps.add(\''+i+'\');setPage();render()">'+i+'</button>').join('');
 
   const sort=document.getElementById('sortBy').value;
   // Desk-priority ranking, applied in EVERY radar and every filter view:
