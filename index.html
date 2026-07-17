@@ -98,6 +98,13 @@ main{max-width:1180px;margin:0 auto 60px;padding:0 20px}
 .card a.title{font-family:Georgia,serif;font-size:17px;font-weight:600;line-height:1.4;
   text-decoration:none;display:block}
 .card a.title:hover{text-decoration:underline;color:var(--seg)}
+.srcline{margin-top:6px;display:flex;align-items:center;flex-wrap:wrap;gap:8px;font-size:12px}
+.outlet{font-weight:700}
+.outlet.t1{color:#0b6e4f}.outlet.t2{color:#1a3c6e}.outlet.t3{color:var(--ink)}.outlet.t5{color:var(--muted)}
+[data-theme="dark"] .outlet.t1{color:#5bc0ac}[data-theme="dark"] .outlet.t2{color:#7fa8d9}
+.tier{font-size:9.5px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;padding:2px 6px;border-radius:5px;background:var(--chip);color:var(--muted)}
+.srcline .nsrc{font-size:11px;color:var(--muted)}
+.srcline .feed{font-size:10.5px;color:var(--muted);opacity:.75}
 .pills{margin-top:8px;display:flex;flex-wrap:wrap;gap:6px}
 .pill{font-size:10.5px;background:var(--chip);border-radius:6px;padding:4px 8px;color:var(--ink)}
 .pill b{color:var(--muted);font-weight:600;margin-right:3px}
@@ -668,6 +675,9 @@ async function refreshLive(quiet){
       catch(e1){ try{ applyLive(await jsonpLive(url),"api"); done=true; }catch(e2){} }
     }
     if(!done&&!quiet){
+      if(location.protocol==="file:"){
+        alert("This file was opened directly from disk, so it cannot fetch fresh data \u2014 it is showing its built-in snapshot.\n\nTo get live updates, open the hosted page (GitHub/intranet), or start the server from the deployment folder:\n\n    node server.js\n\nand browse to http://localhost:8080/");
+      } else
       alert("Live refresh failed on all paths.\n\nEASIEST FIX (no web app needed):\n1) Sheet menu > Classification & tools > Set GitHub token\n2) Settings tab > GITHUB_REPO = owner/repo of this site\n3) Menu > Publish data to GitHub now\nThe page then updates itself on every open.\n\n(Alternative: deploy the web app with access 'Anyone' and set its /exec URL via the \u2699 button.)");
     }
   }
