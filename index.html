@@ -193,7 +193,7 @@ main{max-width:1180px;margin:0 auto 60px;padding:0 20px}
   <button class="more hide" id="moreBtn" onclick="page++;render(true)">Show more</button>
   <div class="empty hide" id="empty">No items match the current filters.<span id="emptyWhy"></span></div>
   <div style="text-align:center;color:var(--muted);font-size:11px;padding:26px 0 0;border-top:1px solid var(--line);margin-top:30px">
-    PFC Radar One v9.2 &middot; classification engine mirrored from the Google Sheet pipeline &middot; auto-generated intelligence, verify before circulation
+    PFC Radar One v9.3 &middot; classification engine mirrored from the Google Sheet pipeline &middot; auto-generated intelligence, verify before circulation
   </div>
 </main>
 
@@ -347,6 +347,7 @@ const CAPEX_RE=/approves?\b[^.]{0,45}(investment|capex|project|expansion)|board 
 const NOISE_RE=/\bopinion\b|editorial|explainer|explained\b|what is |what are |why (is|are|does|did) |how (to|does|did) |top \d+|list of|here's|in charts|decoded|faq/i;
 const PRICE_RE=/share price|stock (price|rises|falls|jumps)|intraday|target price|buy or sell|multibagger|q[1-4] (results|earnings)|net profit (rises|falls|up|down)/i;
 const OUTLOOK_RE=/\boutlook\b|forecasts?\b|analysis:|study says|report says|survey/i;
+const SHARE_PRICE_RE=/52[- ]week (high|low)|shares? (hit|surge|jump|rall(y|ie[sd])|plunge|tank|soar|gain|fall|slip|climb|crash)|stock (hits?|surges?|jumps?|rallies|plunges?|soars?|gains?|falls?|crashes)|share price|stock price|target price|price target|market cap|m-?cap\b|multibagger|intraday (high|low|gain)|(what|why) should investors|should you (buy|sell|invest)|buy,? sell or hold|\bbuy or sell\b/i;
 const INVEST_ADVICE_RE=/\b\d+ best\b|best .{0,30}invest|inflation[- ]proof|recession[- ]proof|investment (ideas|options|plans|strategies)|where to (invest|park)|safe havens?|how to (invest|grow|build wealth)|wealth creation|portfolio (tips|ideas)|retirement (planning|corpus)/i;
 const EQUITY_RESEARCH_RE=/\(rating (downgrade|upgrade)\)|downgraded from (buy|hold|sell|overweight|neutral)|upgraded from (buy|hold|sell|underweight|neutral)|\b(buy|hold|sell|overweight|underweight|neutral) rating\b|price target|target price|valuation concerns?|rally is overextended|seeking alpha|analyst (downgrade|upgrade)|fair value estimate/i;
 const RATING_AGENCY_RE=/\bcrisil\b|\bicra\b|care ratings|india ratings|moody'?s|standard & poor|\bs&p\b|\bfitch\b/i;
@@ -465,7 +466,7 @@ function loadEmbedded(){
 }
 let RECOMPUTE = true;   // regrade embedded snapshot with v6.3 engine; live data keeps sheet grades
 function enrich(){
-  items=items.filter(it=>!foreignNoise(it)&&!STOCKTIP_RE.test(it.t)&&!TIP_EXTRA_RE.test(it.t)&&!EQUITY_RE.test(it.t)&&!RETAIL_RE.test(it.t)&&!EQUITY_RESEARCH_RE.test(it.t)&&!INVEST_ADVICE_RE.test(it.t)&&!(SOFT_TIP_RE.test(it.t)&&!SUBSTANCE_RE.test(it.t)));
+  items=items.filter(it=>!foreignNoise(it)&&!STOCKTIP_RE.test(it.t)&&!TIP_EXTRA_RE.test(it.t)&&!EQUITY_RE.test(it.t)&&!RETAIL_RE.test(it.t)&&!EQUITY_RESEARCH_RE.test(it.t)&&!INVEST_ADVICE_RE.test(it.t)&&!SHARE_PRICE_RE.test(it.t)&&!(SOFT_TIP_RE.test(it.t)&&!SUBSTANCE_RE.test(it.t)));
   // a downgrade only belongs to PFC's universe (borrower / promoter / Indian power-infra player)
   items=items.filter(it=>{
     if(it.r!=="WATCH")return true;
