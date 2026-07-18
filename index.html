@@ -193,7 +193,7 @@ main{max-width:1180px;margin:0 auto 60px;padding:0 20px}
   <button class="more hide" id="moreBtn" onclick="page++;render(true)">Show more</button>
   <div class="empty hide" id="empty">No items match the current filters.<span id="emptyWhy"></span></div>
   <div style="text-align:center;color:var(--muted);font-size:11px;padding:26px 0 0;border-top:1px solid var(--line);margin-top:30px">
-    PFC-NRD v9.7 &middot; classification engine mirrored from the Google Sheet pipeline &middot; auto-generated intelligence, verify before circulation
+    PFC-NRD v9.8 &middot; classification engine mirrored from the Google Sheet pipeline &middot; auto-generated intelligence, verify before circulation
   </div>
 </main>
 
@@ -821,17 +821,27 @@ function render(keepScroll){
   }
   if(!keepScroll&&page===1)window.scrollTo({top:0});
 }
+/* Long agency headlines are unreadable at a glance. Trim for DISPLAY only -
+   the link, the search index and the classifier all keep the full text. */
+function crisp(t,maxWords){
+  maxWords=maxWords||14;
+  let s=String(t||'').trim();
+  s=s.replace(/\s*[:\u2014-]\s*(new travel alert|travel alert|explained|watch|video|report|here'?s (why|what|how))\b.*$/i,'');
+  const m=s.match(/^(.{25,}?),\s+(opening|offering|marking|paving|boosting|enhancing|creating|making|setting|bringing|giving|allowing|helping|ushering|unlocking|signall?ing)\b/i);
+  if(m) s=m[1];
+  const w=s.split(/\s+/);
+  if(w.length>maxWords) s=w.slice(0,maxWords).join(' ').replace(/[,;:\u2014-]+$/,'')+'\u2026';
+  return s;
+}
 function card(it){
   const pills=[];
   const P=(k,v)=>v&&pills.push('<span class="pill"><b>'+k+'</b>'+esc(v)+'</span>');
   if(it.r==="BUSINESS"){P("Sector",it.sector);P("State",it.state);P("\u20B9Cr",it.cr&&it.cr.toLocaleString('en-IN'));P("MW",it.mw&&it.mw.toLocaleString('en-IN'));}
   if(it.r==="WATCH"){P("Sub-type",it.sub||it.wtype);P("Class",it.cls);P("\u20B9Cr",it.cr&&it.cr.toLocaleString('en-IN'));}
   if(it.r==="COMPETITOR"){P("Competitor",it.comp);P("Activity",it.act);P("\u20B9Cr",it.cr&&it.cr.toLocaleString('en-IN'));}
-  if(it.r==="REGULATORY"){P("Regulator",it.reg);P("Type",it.inst);P("Applies as",it.appl);P("Theme",it.rth);if(it.due&&it.due!=="Not stated")P("Due",it.due);}
-  if(it.r==="BORROWING"){P("Issuer",it.icls);P("Coupon",it.cpn);P("Instrument",it.inst);P("Amount",(it.x&&it.x.amt)||(it.cr&&"\u2248 \u20B9"+it.cr.toLocaleString('en-IN')+" cr"));P("Tenor",it.x&&it.x.ten);}
-  if(it.r==="TREASURY"){P("Keyword",it.theme);P("Rates",it.rt);P("INR",it.inr);}
   if(it.pfcb)pills.push('<span class="pill" style="background:var(--watch);color:#fff">PFC BORROWER</span>');
-  const note=it.x&&(it.x.ben||it.x.imp)?'<div class="note">'+esc(it.x.ben||it.x.imp)+(it.x.hed?' &middot; <i>'+esc(it.x.hed)+'</i>':'')+'</div>':'';
+  const bare=(it.r==="BORROWING"||it.r==="TREASURY"||it.r==="REGULATORY");   // headline + source only
+  const note=(!bare&&it.x&&(it.x.ben||it.x.imp))?'<div class="note">'+esc(it.x.ben||it.x.imp)+(it.x.hed?' &middot; <i>'+esc(it.x.hed)+'</i>':'')+'</div>':'';
   const rk=srcRank(it);
   const outlet=(it.s&&it.s.trim())?it.s.trim():'';
   const srcLine='<div class="srcline">'+
@@ -842,7 +852,7 @@ function card(it){
   return '<article class="card" data-r="'+it.r+'"><div class="cline">'+
     '<span class="rtag">'+it.r+'</span>'+
     '<span class="cdate mono">'+esc(it.d)+'</span></div>'+
-    '<a class="title" href="'+esc(it.l)+'" target="_blank" rel="noopener">'+esc(it.t)+'</a>'+
+    '<a class="title" href="'+esc(it.l)+'" target="_blank" rel="noopener" title="'+esc(it.t)+'">'+esc(crisp(it.t))+'</a>'+
     srcLine+
     '<div class="pills">'+pills.join('')+'</div>'+note+'</article>';
 }
