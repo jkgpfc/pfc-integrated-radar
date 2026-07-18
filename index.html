@@ -193,7 +193,7 @@ main{max-width:1180px;margin:0 auto 60px;padding:0 20px}
   <button class="more hide" id="moreBtn" onclick="page++;render(true)">Show more</button>
   <div class="empty hide" id="empty">No items match the current filters.<span id="emptyWhy"></span></div>
   <div style="text-align:center;color:var(--muted);font-size:11px;padding:26px 0 0;border-top:1px solid var(--line);margin-top:30px">
-    PFC-NRD v9.6 &middot; classification engine mirrored from the Google Sheet pipeline &middot; auto-generated intelligence, verify before circulation
+    PFC-NRD v9.7 &middot; classification engine mirrored from the Google Sheet pipeline &middot; auto-generated intelligence, verify before circulation
   </div>
 </main>
 
@@ -348,20 +348,18 @@ const NOISE_RE=/\bopinion\b|editorial|explainer|explained\b|what is |what are |w
 const PRICE_RE=/share price|stock (price|rises|falls|jumps)|intraday|target price|buy or sell|multibagger|q[1-4] (results|earnings)|net profit (rises|falls|up|down)/i;
 const OUTLOOK_RE=/\boutlook\b|forecasts?\b|analysis:|study says|report says|survey/i;
 const SHARE_PRICE_RE=/52[- ]week (high|low)|shares? (hit|surge|jump|rall(y|ie[sd])|plunge|tank|soar|gain|fall|slip|climb|crash)|stock (hits?|surges?|jumps?|rallies|plunges?|soars?|gains?|falls?|crashes)|share price|stock price|target price|price target|market cap|m-?cap\b|multibagger|intraday (high|low|gain)|(what|why) should investors|should you (buy|sell|invest)|buy,? sell or hold|\bbuy or sell\b/i;
-const EQUITY_NOISE_RE=new RegExp([
-  '\\b(shares?|stocks?|equit(y|ies)|scrips?)\\b[^.]{0,45}\\b(rall(y|ies|ied)|extend(s|ed)?|surge[sd]?|jump(s|ed)?|gain(s|ed)?|climb(s|ed)?|rise[sn]?|rising|rose|fall(s|en)?|fell|slip(s|ped)?|slid|drop(s|ped)?|tumbl(e|es|ed)|plunge[sd]?|crash(es|ed)?|soar(s|ed)?|52[- ]week|re-?rating|rerating|target price|price target|valuation|multibagger|buyback|stock split|bonus issue)\\b',
-  '\\b(rally|surge|jump|gain|plunge|crash|sell[- ]?off|re-?rating|rerating)\\b[^.]{0,35}\\b(shares?|stocks?|equit(y|ies)|scrips?)\\b',
-  '\\b(growth|value|penny|small[- ]?cap|mid[- ]?cap|large[- ]?cap|multibagger|dividend)\\s+(shares?|stocks?)\\b',
-  '\\b\\d+\\s+(indian\\s+)?(growth\\s+|top\\s+|best\\s+)?(shares?|stocks?)\\b',
-  '\\bstocks? (to (buy|watch|pick|avoid)|and)\\b',
-  '\\b(every|any)?\\s*investors?\\s+(should|must|need to|ought to)\\b',
-  '\\bshould (you|investors?)\\b','\\bkey rule\\b',
-  '\\bipo\\b[^.]{0,30}(filing|listing|launch|opens?|subscri|price band|grey market|allot)',
-  '\\b(listing|list) on (the )?(nse|bse|exchange|bourses?)\\b',
-  "\\bwon'?t list\\b|\\bde[- ]?list",
-  '\\bearnings outlook\\b|\\bre-?rating hopes\\b|\\bbrokerage[s]? (say|see|raise|cut)'
-].join('|'),'i');
-const HARD_EVENT_RE=/financial closure|invites? bids?|\btender\b|\bppa\b|power purchase|awards? (a )?contract|wins? (the )?(bid|order|project|contract|tender)|\bbags\b|sanction(s|ed|ing)?|disburs|raises? (rs|inr|\u20B9|\$|usd)|bond (issue|issuance|sale)|\bncds?\b|commission(s|ed|ing)?|\bcod\b|\bnclt\b|insolven|wil+ful default|sarfaesi|downgrade|rating (affirm|revis|cut|lowered)|outlook revised|capex|board (approves?|clears?)|cabinet approv|loan (agreement|sanction)|line of credit/i;
+const EQ_WORD_RE=/\b(shares?|stocks?|scrips?|equit(y|ies)|share price|stock price|\bmcap\b|market cap)\b/i;
+const EQ_MOVE_RE=/\b(up|down|zoom\w*|gain\w*|los[et]\w*|surge\w*|jump\w*|ris\w+|rose|fall\w*|fell|slip\w*|drop\w*|plunge\w*|rall\w+|soar\w*|tank\w*|slid\w*|climb\w*|advanc\w*|declin\w*|tumbl\w*|crash\w*|spike\w*|extend\w*|rebound\w*|recover\w*|outperform\w*|underperform\w*|in focus|in the (red|green)|52[- ]week|target price|price target|re-?rating|rerating|multibagger|buy ?back|stock split|bonus issue|valuation|upside|downside|all[- ]time high|record high)\b/i;
+const EQ_PCT_RE=/\d+(\.\d+)?\s*(%|per ?cent)/i;
+const EQ_WHY_RE=/^(why|what|how|should|is|are|will|can)\b|\bexplained\b|here'?s (why|what|how)|\?/i;
+const EQ_RESULT_RE=/\b(q[1-4]|quarterly|qoq|yoy|profit|revenue|earnings|net income|topline|bottomline|margin)\b/i;
+const EQ_PICK_RE=/\b(growth|value|penny|small[- ]?cap|mid[- ]?cap|large[- ]?cap|multibagger|dividend)\s+(shares?|stocks?)\b|\bstocks? to (buy|watch|pick|avoid)\b|\b\d+\s+(indian\s+)?(growth\s+|top\s+|best\s+)?(shares?|stocks?)\b|\b(every|any)?\s*investors?\s+(should|must|need to|ought to)\b|\bshould (you|investors?)\b|\bkey rule\b|\bbrokerage[s]? (say|see|raise|cut)|\banalysts? (say|see|expect)/i;
+const EQ_LIST_RE=/\bipo\b[^.]{0,30}(filing|listing|launch|opens?|subscri|price band|grey market|allot)|\b(listing|list) on (the )?(nse|bse|exchange|bourses?)\b|\bwon'?t list\b|\bde[- ]?list/i;
+const HARD_EVENT_RE=/financial closure|invites? bids?|\btender\b|\bppa\b|\bpsa\b|power (purchase|supply) agreement|sign(s|ed|ing)?\b[^.]{0,30}(agreement|pact|\bmou\b|\bmoa\b|contract|deal|\bppa\b|\bpsa\b)|awards? (a )?contract|wins? (the )?(bid|order|project|contract|tender)|\bbags\b|sanction(s|ed|ing)?|disburs|raises? (rs|inr|\u20B9|\$|usd)|bond (issue|issuance|sale)|\bncds?\b|commission(s|ed|ing)?|\bcod\b|\bnclt\b|insolven|wil+ful default|sarfaesi|downgrade|rating (affirm|revis|cut|lowered)|outlook revised|capex|board (approves?|clears?)|cabinet approv|loan (agreement|sanction)|line of credit|acquir(es?|ed|ing)|stake (sale|buy)/i;
+function equityNoise(t){
+  if(!EQ_WORD_RE.test(t)) return EQ_PICK_RE.test(t)||EQ_LIST_RE.test(t);
+  return EQ_MOVE_RE.test(t)||EQ_PCT_RE.test(t)||EQ_WHY_RE.test(t)||EQ_RESULT_RE.test(t)||EQ_PICK_RE.test(t)||EQ_LIST_RE.test(t);
+}
 const INVEST_ADVICE_RE=/\b\d+ best\b|best .{0,30}invest|inflation[- ]proof|recession[- ]proof|investment (ideas|options|plans|strategies)|where to (invest|park)|safe havens?|how to (invest|grow|build wealth)|wealth creation|portfolio (tips|ideas)|retirement (planning|corpus)/i;
 const EQUITY_RESEARCH_RE=/\(rating (downgrade|upgrade)\)|downgraded from (buy|hold|sell|overweight|neutral)|upgraded from (buy|hold|sell|underweight|neutral)|\b(buy|hold|sell|overweight|underweight|neutral) rating\b|price target|target price|valuation concerns?|rally is overextended|seeking alpha|analyst (downgrade|upgrade)|fair value estimate/i;
 const RATING_AGENCY_RE=/\bcrisil\b|\bicra\b|care ratings|india ratings|moody'?s|standard & poor|\bs&p\b|\bfitch\b/i;
@@ -480,7 +478,7 @@ function loadEmbedded(){
 }
 let RECOMPUTE = true;   // regrade embedded snapshot with v6.3 engine; live data keeps sheet grades
 function enrich(){
-  items=items.filter(it=>!foreignNoise(it)&&!STOCKTIP_RE.test(it.t)&&!TIP_EXTRA_RE.test(it.t)&&!EQUITY_RE.test(it.t)&&!RETAIL_RE.test(it.t)&&!EQUITY_RESEARCH_RE.test(it.t)&&!INVEST_ADVICE_RE.test(it.t)&&!SHARE_PRICE_RE.test(it.t)&&!(EQUITY_NOISE_RE.test(it.t)&&!HARD_EVENT_RE.test(it.t))&&!(SOFT_TIP_RE.test(it.t)&&!SUBSTANCE_RE.test(it.t)));
+  items=items.filter(it=>!foreignNoise(it)&&!STOCKTIP_RE.test(it.t)&&!TIP_EXTRA_RE.test(it.t)&&!EQUITY_RE.test(it.t)&&!RETAIL_RE.test(it.t)&&!EQUITY_RESEARCH_RE.test(it.t)&&!INVEST_ADVICE_RE.test(it.t)&&!SHARE_PRICE_RE.test(it.t)&&!(equityNoise(it.t)&&!HARD_EVENT_RE.test(it.t))&&!(SOFT_TIP_RE.test(it.t)&&!SUBSTANCE_RE.test(it.t)));
   // a downgrade only belongs to PFC's universe (borrower / promoter / Indian power-infra player)
   items=items.filter(it=>{
     if(it.r!=="WATCH")return true;
