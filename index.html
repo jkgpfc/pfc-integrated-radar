@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>PFC Radar One — Intelligence Desk</title>
+<title>PFC News Radar Dashboard (PFC-NRD)</title>
 <style>
 /* ============ TOKENS ============ */
 :root{
@@ -140,7 +140,7 @@ main{max-width:1180px;margin:0 auto 60px;padding:0 20px}
 
 <div id="gate" class="hide">
   <div class="gatebox">
-    <h2>PFC Radar One</h2>
+    <h2>PFC News Radar Dashboard</h2>
     <p>Sign in to open the intelligence briefing. (Client-side gate — not a security control; do not host confidential data publicly.)</p>
     <input id="gid" type="text" placeholder="ID" autocomplete="off" style="margin-bottom:10px">
     <input id="gpass" type="password" placeholder="Password" autocomplete="off">
@@ -150,7 +150,7 @@ main{max-width:1180px;margin:0 auto 60px;padding:0 20px}
 </div>
 
 <header>
-  <div class="masthead">PFC Radar One<small>Potential Business &middot; Borrower Watch &middot; Corporate Borrowings &middot; Treasury &middot; Competitor Watch &middot; Regulatory</small></div>
+  <div class="masthead">PFC News Radar Dashboard<small>Potential Business &middot; Borrower Watch &middot; Corporate Borrowings &middot; Treasury &middot; Competitor Watch &middot; Regulatory</small></div>
   <div class="hspace"></div>
   <div class="src" id="srcInfo"></div>
   <button class="hbtn" id="liveBtn" onclick="refreshLive()" title="Fetch latest from the Google Sheet web app">&#8635; Live refresh</button>
@@ -193,7 +193,7 @@ main{max-width:1180px;margin:0 auto 60px;padding:0 20px}
   <button class="more hide" id="moreBtn" onclick="page++;render(true)">Show more</button>
   <div class="empty hide" id="empty">No items match the current filters.<span id="emptyWhy"></span></div>
   <div style="text-align:center;color:var(--muted);font-size:11px;padding:26px 0 0;border-top:1px solid var(--line);margin-top:30px">
-    PFC Radar One v9.4 &middot; classification engine mirrored from the Google Sheet pipeline &middot; auto-generated intelligence, verify before circulation
+    PFC-NRD v9.5 &middot; classification engine mirrored from the Google Sheet pipeline &middot; auto-generated intelligence, verify before circulation
   </div>
 </main>
 
