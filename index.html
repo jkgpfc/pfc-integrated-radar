@@ -179,7 +179,7 @@ main{max-width:1180px;margin:0 auto 60px;padding:0 20px}
     <option value="date" selected>Sort: Newest</option>
     <option value="imp">Sort: Priority</option>
     <option value="amt">Sort: Amount</option>
-    <option value="source">Sort: Source</option>
+    <option value="source">Sort: Source (A\u2013Z)</option>
   </select>
   </div>
 </div>
@@ -193,7 +193,7 @@ main{max-width:1180px;margin:0 auto 60px;padding:0 20px}
   <button class="more hide" id="moreBtn" onclick="page++;render(true)">Show more</button>
   <div class="empty hide" id="empty">No items match the current filters.<span id="emptyWhy"></span></div>
   <div style="text-align:center;color:var(--muted);font-size:11px;padding:26px 0 0;border-top:1px solid var(--line);margin-top:30px">
-    PFC-NRD v9.8 &middot; classification engine mirrored from the Google Sheet pipeline &middot; auto-generated intelligence, verify before circulation
+    PFC-NRD v9.9 &middot; classification engine mirrored from the Google Sheet pipeline &middot; auto-generated intelligence, verify before circulation
   </div>
 </main>
 
@@ -356,6 +356,8 @@ const EQ_RESULT_RE=/\b(q[1-4]|quarterly|qoq|yoy|profit|revenue|earnings|net inco
 const EQ_PICK_RE=/\b(growth|value|penny|small[- ]?cap|mid[- ]?cap|large[- ]?cap|multibagger|dividend)\s+(shares?|stocks?)\b|\bstocks? to (buy|watch|pick|avoid)\b|\b\d+\s+(indian\s+)?(growth\s+|top\s+|best\s+)?(shares?|stocks?)\b|\b(every|any)?\s*investors?\s+(should|must|need to|ought to)\b|\bshould (you|investors?)\b|\bkey rule\b|\bbrokerage[s]? (say|see|raise|cut)|\banalysts? (say|see|expect)/i;
 const EQ_LIST_RE=/\bipo\b[^.]{0,30}(filing|listing|launch|opens?|subscri|price band|grey market|allot)|\b(listing|list) on (the )?(nse|bse|exchange|bourses?)\b|\bwon'?t list\b|\bde[- ]?list/i;
 const HARD_EVENT_RE=/financial closure|invites? bids?|\btender\b|\bppa\b|\bpsa\b|power (purchase|supply) agreement|sign(s|ed|ing)?\b[^.]{0,30}(agreement|pact|\bmou\b|\bmoa\b|contract|deal|\bppa\b|\bpsa\b)|awards? (a )?contract|wins? (the )?(bid|order|project|contract|tender)|\bbags\b|sanction(s|ed|ing)?|disburs|raises? (rs|inr|\u20B9|\$|usd)|bond (issue|issuance|sale)|\bncds?\b|commission(s|ed|ing)?|\bcod\b|\bnclt\b|insolven|wil+ful default|sarfaesi|downgrade|rating (affirm|revis|cut|lowered)|outlook revised|capex|board (approves?|clears?)|cabinet approv|loan (agreement|sanction)|line of credit|acquir(es?|ed|ing)|stake (sale|buy)/i;
+const RESULTS_RE=/\bq[1-4]\s*(fy\s*\d{2,4}\s*)?results?\b|\bquarterly results?\b|\bresults?\s*:\s*net profit|net profit (rises?|rose|falls?|fell|jumps?|declines?|up|down)|\b(profit|revenue) (rises?|rose|falls?|fell|jumps?|grew|grows?)\b[^.]{0,30}\b(yoy|qoq|per ?cent|%)/i;
+function resultsNoise(t){ return RESULTS_RE.test(t); }
 function equityNoise(t){
   if(!EQ_WORD_RE.test(t)) return EQ_PICK_RE.test(t)||EQ_LIST_RE.test(t);
   return EQ_MOVE_RE.test(t)||EQ_PCT_RE.test(t)||EQ_WHY_RE.test(t)||EQ_RESULT_RE.test(t)||EQ_PICK_RE.test(t)||EQ_LIST_RE.test(t);
@@ -478,7 +480,7 @@ function loadEmbedded(){
 }
 let RECOMPUTE = true;   // regrade embedded snapshot with v6.3 engine; live data keeps sheet grades
 function enrich(){
-  items=items.filter(it=>!foreignNoise(it)&&!STOCKTIP_RE.test(it.t)&&!TIP_EXTRA_RE.test(it.t)&&!EQUITY_RE.test(it.t)&&!RETAIL_RE.test(it.t)&&!EQUITY_RESEARCH_RE.test(it.t)&&!INVEST_ADVICE_RE.test(it.t)&&!SHARE_PRICE_RE.test(it.t)&&!(equityNoise(it.t)&&!HARD_EVENT_RE.test(it.t))&&!(SOFT_TIP_RE.test(it.t)&&!SUBSTANCE_RE.test(it.t)));
+  items=items.filter(it=>!foreignNoise(it)&&!STOCKTIP_RE.test(it.t)&&!TIP_EXTRA_RE.test(it.t)&&!EQUITY_RE.test(it.t)&&!RETAIL_RE.test(it.t)&&!EQUITY_RESEARCH_RE.test(it.t)&&!INVEST_ADVICE_RE.test(it.t)&&!SHARE_PRICE_RE.test(it.t)&&!(equityNoise(it.t)&&!HARD_EVENT_RE.test(it.t))&&!(resultsNoise(it.t)&&!it.pfcb&&!HARD_EVENT_RE.test(it.t))&&!(SOFT_TIP_RE.test(it.t)&&!SUBSTANCE_RE.test(it.t)));
   // a downgrade only belongs to PFC's universe (borrower / promoter / Indian power-infra player)
   items=items.filter(it=>{
     if(it.r!=="WATCH")return true;
@@ -719,7 +721,7 @@ function within(it){
   if(freg&&it.r==="REGULATORY"&&it.reg!==freg)return false;
   if(frth&&it.r==="REGULATORY"&&it.rth!==frth)return false;
   const fsrc=val('fSrc');
-  if(fsrc&&String(it.s||'').trim()!==fsrc)return false;   // universal news-source filter (exact outlet)
+  if(fsrc&&cleanSrc(it.s)!==fsrc)return false;   // universal news-source filter (exact outlet)
   return true;
 }
 function val(id){const e=document.getElementById(id);return e.value==="*"?"":e.value;}
@@ -737,7 +739,7 @@ function buildFilters(){
   fill('fSector',"All sectors / products",uniq(i=>i.r==="BUSINESS",i=>i.sector));
   fill('fTheme',"All treasury keywords",uniq(i=>i.r==="TREASURY",i=>i.theme));
   const srcCount={};
-  items.forEach(i=>{const s=(i.s||'').trim();if(s)srcCount[s]=(srcCount[s]||0)+1;});
+  items.forEach(i=>{const s=cleanSrc(i.s);if(s)srcCount[s]=(srcCount[s]||0)+1;});
   const topSrc=Object.keys(srcCount).sort((a,b)=>srcCount[b]-srcCount[a]).slice(0,40).sort();
   fill('fSrc',"All sources",topSrc);
   applyFilterVisibility();
@@ -802,7 +804,11 @@ function render(keepScroll){
   const pool=items.filter(within).sort((a,b)=>{
     if(sort==="date")return b.d.localeCompare(a.d)|| ((a.srk??srcRank(a))-(b.srk??srcRank(b)));
     if(sort==="amt") return ((b.cr||0)-(a.cr||0))|| ((a.srk??srcRank(a))-(b.srk??srcRank(b))) || ((IMP_RANK[a.i]??3)-(IMP_RANK[b.i]??3));
-    if(sort==="source")return ((a.srk??srcRank(a))-(b.srk??srcRank(b)))|| ((IMP_RANK[a.i]??3)-(IMP_RANK[b.i]??3)) || ((b.cr||0)-(b.cr||0));
+    if(sort==="source"){
+      const an=cleanSrc(a.s).toLowerCase(), bn=cleanSrc(b.s).toLowerCase();
+      if(an&&!bn)return -1; if(bn&&!an)return 1;
+      return an.localeCompare(bn) || ((a.srk??srcRank(a))-(b.srk??srcRank(b))) || b.d.localeCompare(a.d);
+    }
     return deskRank(a,b);   // default
   });
   const names=Object.fromEntries(RADARS);
@@ -823,6 +829,9 @@ function render(keepScroll){
 }
 /* Long agency headlines are unreadable at a glance. Trim for DISPLAY only -
    the link, the search index and the classifier all keep the full text. */
+function cleanSrc(s){
+  return String(s||'').replace(/^[\s|\-\u2013\u2014\u2022,;:\/]+/,'').replace(/[\s|\-\u2013\u2014\u2022,;:\/]+$/,'').trim();
+}
 function crisp(t,maxWords){
   maxWords=maxWords||14;
   let s=String(t||'').trim();
@@ -843,7 +852,7 @@ function card(it){
   const bare=(it.r==="BORROWING"||it.r==="TREASURY"||it.r==="REGULATORY");   // headline + source only
   const note=(!bare&&it.x&&(it.x.ben||it.x.imp))?'<div class="note">'+esc(it.x.ben||it.x.imp)+(it.x.hed?' &middot; <i>'+esc(it.x.hed)+'</i>':'')+'</div>':'';
   const rk=srcRank(it);
-  const outlet=(it.s&&it.s.trim())?it.s.trim():'';
+  const outlet=cleanSrc(it.s);
   const srcLine='<div class="srcline">'+
     (outlet?'<span class="outlet t'+rk+'">'+esc(outlet)+'</span>':'<span class="outlet t5">source not stated</span>')+
     '<span class="tier t'+rk+'">'+srcLabel(rk)+'</span>'+
