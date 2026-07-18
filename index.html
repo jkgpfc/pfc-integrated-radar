@@ -32,7 +32,11 @@ button,select,input{font:inherit;color:inherit}
 header{position:sticky;top:0;z-index:9;background:var(--paper);
   border-bottom:2px solid var(--ink);padding:10px 20px;
   display:flex;align-items:center;gap:14px;flex-wrap:wrap}
-.masthead{font-family:Georgia,"Times New Roman",serif;font-size:22px;font-weight:700;letter-spacing:-.3px}
+.brandmark{width:46px;height:46px;flex:0 0 46px}
+.brandtext{display:flex;flex-direction:column;line-height:1.15}
+.brandtext b{font-size:22px;letter-spacing:.5px}
+.brandtext small{font-weight:600;opacity:.72;font-size:11px;letter-spacing:.2px}
+.masthead{display:flex;align-items:center;gap:12px;font-family:Georgia,"Times New Roman",serif;font-size:22px;font-weight:700;letter-spacing:-.3px}
 .masthead small{display:block;font:600 10px/1.4 "Segoe UI",sans-serif;letter-spacing:2px;
   color:var(--muted);text-transform:uppercase}
 .hspace{flex:1}
@@ -150,7 +154,31 @@ main{max-width:1180px;margin:0 auto 60px;padding:0 20px}
 </div>
 
 <header>
-  <div class="masthead">PFC News Radar Dashboard<small>Potential Business &middot; Borrower Watch &middot; Corporate Borrowings &middot; Treasury &middot; Competitor Watch &middot; Regulatory</small></div>
+  <div class="masthead">
+    <svg class="brandmark" viewBox="0 0 120 120" aria-hidden="true">
+      <defs>
+        <linearGradient id="nrdInk" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#4F81BD"/><stop offset="100%" stop-color="#1F497D"/>
+        </linearGradient>
+      </defs>
+      <!-- eye / lens -->
+      <path d="M6 60 Q60 12 114 60 Q60 108 6 60 Z" fill="none" stroke="url(#nrdInk)" stroke-width="6" stroke-linejoin="round"/>
+      <!-- radar dial -->
+      <circle cx="60" cy="60" r="30" fill="none" stroke="url(#nrdInk)" stroke-width="4"/>
+      <circle cx="60" cy="60" r="20" fill="none" stroke="url(#nrdInk)" stroke-width="2" opacity=".55"/>
+      <circle cx="60" cy="60" r="10" fill="none" stroke="url(#nrdInk)" stroke-width="2" opacity=".35"/>
+      <path d="M60 26v-7M60 101v-7M26 60h-7M101 60h-7" stroke="url(#nrdInk)" stroke-width="3" stroke-linecap="round"/>
+      <!-- sweep needle -->
+      <path d="M60 60 L84 39" stroke="#E8801A" stroke-width="5" stroke-linecap="round"/>
+      <circle cx="60" cy="60" r="4.5" fill="#1F497D"/>
+      <!-- ping -->
+      <path d="M92 30l2.6 6.4L101 39l-6.4 2.6L92 48l-2.6-6.4L83 39l6.4-2.6z" fill="#E8801A"/>
+    </svg>
+    <span class="brandtext">
+      <b>PFC-NRD</b>
+      <small>News Radar Dashboard &nbsp;&middot;&nbsp; Business &middot; Borrower &middot; Borrowings &middot; Treasury &middot; Peers &middot; Regulatory</small>
+    </span>
+  </div>
   <div class="hspace"></div>
   <div class="src" id="srcInfo"></div>
   <button class="hbtn" id="liveBtn" onclick="refreshLive()" title="Fetch latest from the Google Sheet web app">&#8635; Live refresh</button>
@@ -193,7 +221,7 @@ main{max-width:1180px;margin:0 auto 60px;padding:0 20px}
   <button class="more hide" id="moreBtn" onclick="page++;render(true)">Show more</button>
   <div class="empty hide" id="empty">No items match the current filters.<span id="emptyWhy"></span></div>
   <div style="text-align:center;color:var(--muted);font-size:11px;padding:26px 0 0;border-top:1px solid var(--line);margin-top:30px">
-    PFC-NRD v9.9 &middot; classification engine mirrored from the Google Sheet pipeline &middot; auto-generated intelligence, verify before circulation
+    PFC-NRD v10.0 &middot; classification engine mirrored from the Google Sheet pipeline &middot; auto-generated intelligence, verify before circulation
   </div>
 </main>
 
@@ -464,7 +492,8 @@ function scoreItem(it){
 }
 
 /* ---------- state ---------- */
-const RADARS=[["ALL","All Radars"],["BUSINESS","Potential Business"],["WATCH","Borrower Watch"],["BORROWING","Corporate Borrowings"],["TREASURY","Treasury"],["COMPETITOR","Competitor Watch"],["REGULATORY","Regulatory"]];
+const RADARS=[["ALL","All Radars"],["BUSINESS","Business"],["WATCH","Borrower"],["BORROWING","Borrowings"],["TREASURY","Treasury"],["COMPETITOR","Peers"],["REGULATORY","Regulatory"]];
+const RNAME=Object.fromEntries(RADARS.map(([k,v])=>[k,v.toUpperCase()]));
 const IMP_RANK={High:0,Medium:1,Low:2};
 let items=[], generatedAt="", srcNote="";
 let radar="ALL", period=30, imps=new Set(["High","Medium","Low"]), page=1;   // sort default = newest (see sortBy)
@@ -859,7 +888,7 @@ function card(it){
     (it.nsrc>1?'<span class="nsrc">'+it.nsrc+' sources</span>':'')+
     (it.f?'<span class="feed">via '+esc(it.f)+'</span>':'')+'</div>';
   return '<article class="card" data-r="'+it.r+'"><div class="cline">'+
-    '<span class="rtag">'+it.r+'</span>'+
+    '<span class="rtag">'+(RNAME[it.r]||it.r)+'</span>'+
     '<span class="cdate mono">'+esc(it.d)+'</span></div>'+
     '<a class="title" href="'+esc(it.l)+'" target="_blank" rel="noopener" title="'+esc(it.t)+'">'+esc(crisp(it.t))+'</a>'+
     srcLine+
