@@ -222,7 +222,7 @@ main{max-width:1180px;margin:0 auto 60px;padding:0 20px}
   <button class="more hide" id="moreBtn" onclick="page++;render(true)">Show more</button>
   <div class="empty hide" id="empty">No items match the current filters.<span id="emptyWhy"></span></div>
   <div style="text-align:center;color:var(--muted);font-size:11px;padding:26px 0 0;border-top:1px solid var(--line);margin-top:30px">
-    PFC-NRD v10.4 &middot; classification engine mirrored from the Google Sheet pipeline &middot; auto-generated intelligence, verify before circulation
+    PFC-NRD v10.6 &middot; classification engine mirrored from the Google Sheet pipeline &middot; auto-generated intelligence, verify before circulation
   </div>
 </main>
 
@@ -686,8 +686,8 @@ function paintStatus(){
   const col = age===null ? 'var(--muted)' : age<5*60000 ? 'var(--lo)' : age<60*60000 ? 'var(--md)' : 'var(--hi)';
   const when = generatedAt || "unknown";
   const ago  = age===null ? "" : ' &middot; <b>'+agoText(age)+'</b>';
-  const warn = (age!==null && age>10*60000)
-    ? '<br><span style="color:var(--hi);font-weight:700">Sheet has not published for '+agoText(age).replace(' ago','')+' \u2014 check the 1-minute trigger.</span>'
+  const warn = (age!==null && age>20*60000)
+    ? '<br><span style="color:var(--hi);font-weight:700">No fresh publish for '+agoText(age).replace(' ago','')+' \u2014 auto-publisher may be down.</span>'
     : '';
   el.innerHTML='<span style="color:'+col+';font-weight:700">\u25CF LIVE '+when+'</span>'+ago+'<br>'+
     'data through <b>'+MAXD+'</b> &middot; auto-refreshing every minute'+warn;
