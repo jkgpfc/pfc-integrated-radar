@@ -34,7 +34,8 @@ header{position:sticky;top:0;z-index:9;background:var(--paper);
   display:flex;align-items:center;gap:14px;flex-wrap:wrap}
 .brandmark{width:46px;height:46px;flex:0 0 46px}
 .brandtext{display:flex;flex-direction:column;line-height:1.15}
-.brandtext b{font-size:22px;letter-spacing:.5px}
+.brandtext b{font-size:25px;letter-spacing:.2px;white-space:nowrap}
+.brandtext small em{font-style:normal;font-weight:800;letter-spacing:1.1px;opacity:.95}
 .brandtext small{font-weight:600;opacity:.72;font-size:11px;letter-spacing:.2px}
 .masthead{display:flex;align-items:center;gap:12px;font-family:Georgia,"Times New Roman",serif;font-size:22px;font-weight:700;letter-spacing:-.3px}
 .masthead small{display:block;font:600 10px/1.4 "Segoe UI",sans-serif;letter-spacing:2px;
@@ -175,8 +176,8 @@ main{max-width:1180px;margin:0 auto 60px;padding:0 20px}
       <path d="M92 30l2.6 6.4L101 39l-6.4 2.6L92 48l-2.6-6.4L83 39l6.4-2.6z" fill="#E8801A"/>
     </svg>
     <span class="brandtext">
-      <b>PFC-NRD</b>
-      <small>News Radar Dashboard &nbsp;&middot;&nbsp; Business &middot; Borrower &middot; Borrowings &middot; Treasury &middot; Peers &middot; Regulatory</small>
+      <b>PFC&rsquo;s Realtime News Radar Dashboard</b>
+      <small><em>PFC-NRD</em> &nbsp;&middot;&nbsp; Business &middot; Borrower &middot; Borrowings &middot; Treasury &middot; Peers &middot; Regulatory</small>
     </span>
   </div>
   <div class="hspace"></div>
@@ -221,7 +222,7 @@ main{max-width:1180px;margin:0 auto 60px;padding:0 20px}
   <button class="more hide" id="moreBtn" onclick="page++;render(true)">Show more</button>
   <div class="empty hide" id="empty">No items match the current filters.<span id="emptyWhy"></span></div>
   <div style="text-align:center;color:var(--muted);font-size:11px;padding:26px 0 0;border-top:1px solid var(--line);margin-top:30px">
-    PFC-NRD v10.2 &middot; classification engine mirrored from the Google Sheet pipeline &middot; auto-generated intelligence, verify before circulation
+    PFC-NRD v10.3 &middot; classification engine mirrored from the Google Sheet pipeline &middot; auto-generated intelligence, verify before circulation
   </div>
 </main>
 
@@ -676,7 +677,7 @@ function applyLive(j,via){
   const stale=ageDays!==null&&ageDays>=1;
   document.getElementById('srcInfo').innerHTML='<b>'+items.length+'</b> items &middot; <span style="color:var(--lo);font-weight:700">\u25CF LIVE '+generatedAt+'</span><br>'+
     'data through <b>'+maxD+'</b>'+(stale?' <span style="color:var(--md);font-weight:700">('+ageDays+'d old \u2014 run/publish from the sheet)</span>':'')+
-    ' &middot; '+(via==="published"?"via data.json":"via API");
+    ' &middot; '+(via==="published"?"via data.json":"via API")+' &middot; auto-refreshing every minute';
 }
 function liveUrl(){
   try{return (localStorage.getItem('pfcApiUrl')||APPS_SCRIPT_URL_DEFAULT||"").trim();}catch(e){return APPS_SCRIPT_URL_DEFAULT;}
@@ -950,6 +951,18 @@ document.addEventListener('keydown',e=>{if(e.key==="Enter"&&!document.getElement
   if(LOGIN_ID&&PASSCODE){try{if(sessionStorage.getItem('pfcGate')!=='1')document.getElementById('gate').classList.remove('hide');}catch(e){document.getElementById('gate').classList.remove('hide');}}
   loadEmbedded();
   setTimeout(function(){refreshLive(true);},300);   // silent auto-sync on every open: data.json first, then API
+
+  /* Auto-refresh every minute so the desk never has to press anything. It runs
+     quietly (no button flash, no dialog) and only while the tab is visible, so
+     a forgotten background tab does not poll all day. The button stays for an
+     on-demand pull. */
+  var AUTO_MS = 60000;
+  setInterval(function(){
+    if (document.visibilityState === 'visible') refreshLive(true);
+  }, AUTO_MS);
+  document.addEventListener('visibilitychange', function(){
+    if (document.visibilityState === 'visible') refreshLive(true);   // catch up on return
+  });
 })();
 </script>
 </body>
