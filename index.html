@@ -221,7 +221,7 @@ main{max-width:1180px;margin:0 auto 60px;padding:0 20px}
   <button class="more hide" id="moreBtn" onclick="page++;render(true)">Show more</button>
   <div class="empty hide" id="empty">No items match the current filters.<span id="emptyWhy"></span></div>
   <div style="text-align:center;color:var(--muted);font-size:11px;padding:26px 0 0;border-top:1px solid var(--line);margin-top:30px">
-    PFC-NRD v10.1 &middot; classification engine mirrored from the Google Sheet pipeline &middot; auto-generated intelligence, verify before circulation
+    PFC-NRD v10.2 &middot; classification engine mirrored from the Google Sheet pipeline &middot; auto-generated intelligence, verify before circulation
   </div>
 </main>
 
@@ -713,16 +713,15 @@ async function refreshLive(quiet){
   const btn=document.getElementById('liveBtn');btn.disabled=true;btn.textContent="Fetching…";
   let done=false;
   try{
+    const before=items.length;
     const j=await tryDataJson(); applyLive(j,"published"); done=true;
+    // Quiet confirmation on the button itself - the header already carries the
+    // publish time, so a dialog every refresh is just noise.
     if(!quiet){
-      const stamp=String(j.generatedAt||j.publishedAt||"");
-      const pub=stamp.replace("T"," ").slice(0,16);
-      const age=Math.round((Date.now()-Date.parse(stamp))/36e5);
-      setTimeout(()=>alert(
-        "Reloaded from data.json.\n\nLast published by the sheet: "+(pub||"unknown")+
-        (isFinite(age)?"  ("+age+" h ago)":"")+
-        "\nItems on screen: "+items.length+
-        "\n\nThis page re-reads what the sheet last published. To pull NEWER news, run the sheet (RUN EVERYTHING, or let the 1-minute trigger run), then press this again."),30);
+      const gained=items.length-before;
+      btn.textContent = gained>0 ? "\u2713 +"+gained+" new" : "\u2713 Up to date";
+      btn.dataset.flash="1";
+      setTimeout(()=>{ btn.dataset.flash=""; btn.textContent="\u21BB Live refresh"; },1800);
     }
   }catch(e0){
     const url=liveUrl();
@@ -737,7 +736,8 @@ async function refreshLive(quiet){
       alert("Live refresh failed on all paths.\n\nEASIEST FIX (no web app needed):\n1) Sheet menu > Classification & tools > Set GitHub token\n2) Settings tab > GITHUB_REPO = owner/repo of this site\n3) Menu > Publish data to GitHub now\nThe page then updates itself on every open.\n\n(Alternative: deploy the web app with access 'Anyone' and set its /exec URL via the \u2699 button.)");
     }
   }
-  btn.disabled=false;btn.textContent="\u21BB Live refresh";
+  btn.disabled=false;
+  if(!btn.dataset.flash) btn.textContent="\u21BB Live refresh";
 }
 
 /* ---------- date window ---------- */
