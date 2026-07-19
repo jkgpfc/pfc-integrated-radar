@@ -222,7 +222,7 @@ main{max-width:1180px;margin:0 auto 60px;padding:0 20px}
   <button class="more hide" id="moreBtn" onclick="page++;render(true)">Show more</button>
   <div class="empty hide" id="empty">No items match the current filters.<span id="emptyWhy"></span></div>
   <div style="text-align:center;color:var(--muted);font-size:11px;padding:26px 0 0;border-top:1px solid var(--line);margin-top:30px">
-    PFC-NRD v10.3 &middot; classification engine mirrored from the Google Sheet pipeline &middot; auto-generated intelligence, verify before circulation
+    PFC-NRD v10.4 &middot; classification engine mirrored from the Google Sheet pipeline &middot; auto-generated intelligence, verify before circulation
   </div>
 </main>
 
@@ -505,8 +505,7 @@ function loadEmbedded(){
   items=EMBEDDED.items||[]; generatedAt=EMBEDDED.generatedAt||""; srcNote=EMBEDDED.sourceNote||"Embedded snapshot";
   enrich(); buildFilters(); render();
   document.getElementById('srcInfo').innerHTML =
-    '<b>'+items.length+'</b> items &middot; <span style="color:var(--md);font-weight:700">SNAPSHOT '+generatedAt+'</span><br>'+
-    (liveUrl()?'syncing with sheet\u2026':'not synced with your sheet \u2014 press Live refresh once to connect');
+    '<span style="color:var(--md);font-weight:700">\u25CB SNAPSHOT '+generatedAt+'</span><br>syncing\u2026';
 }
 let RECOMPUTE = true;   // regrade embedded snapshot with v6.3 engine; live data keeps sheet grades
 function enrich(){ ANCHOR=null;
@@ -668,6 +667,33 @@ function sim(a,b){
 }
 
 /* ---------- live mode ---------- */
+/* The publish time alone cannot tell you whether the sheet is still alive - a
+   frozen clock looks identical to a working one. So show how long ago it was
+   published and re-paint it every 30s, with the dot colour carrying the state:
+   green under 5 min, amber under an hour, red beyond. */
+let PUB_TS=null, MAXD="";
+function agoText(ms){
+  const m=Math.round(ms/60000);
+  if(m<1) return "just now";
+  if(m<60) return m+" min ago";
+  const h=Math.floor(m/60);
+  if(h<24) return h+" hr "+(m%60)+" min ago";
+  return Math.floor(h/24)+"d "+(h%24)+"h ago";
+}
+function paintStatus(){
+  const el=document.getElementById('srcInfo'); if(!el) return;
+  const age = PUB_TS ? Date.now()-PUB_TS : null;
+  const col = age===null ? 'var(--muted)' : age<5*60000 ? 'var(--lo)' : age<60*60000 ? 'var(--md)' : 'var(--hi)';
+  const when = generatedAt || "unknown";
+  const ago  = age===null ? "" : ' &middot; <b>'+agoText(age)+'</b>';
+  const warn = (age!==null && age>10*60000)
+    ? '<br><span style="color:var(--hi);font-weight:700">Sheet has not published for '+agoText(age).replace(' ago','')+' \u2014 check the 1-minute trigger.</span>'
+    : '';
+  el.innerHTML='<span style="color:'+col+';font-weight:700">\u25CF LIVE '+when+'</span>'+ago+'<br>'+
+    'data through <b>'+MAXD+'</b> &middot; auto-refreshing every minute'+warn;
+}
+setInterval(paintStatus,30000);
+
 function applyLive(j,via){
   if(!j||!j.items)throw new Error("Unexpected response");
   items=j.items; RECOMPUTE=false; generatedAt=(j.publishedAt||j.generatedAt||"").slice(0,16).replace("T"," ");
@@ -675,9 +701,9 @@ function applyLive(j,via){
   const maxD=items.reduce((m,i)=>i.d>m?i.d:m,"");
   const ageDays=maxD?Math.floor((Date.now()-new Date(maxD).getTime())/864e5):null;
   const stale=ageDays!==null&&ageDays>=1;
-  document.getElementById('srcInfo').innerHTML='<b>'+items.length+'</b> items &middot; <span style="color:var(--lo);font-weight:700">\u25CF LIVE '+generatedAt+'</span><br>'+
-    'data through <b>'+maxD+'</b>'+(stale?' <span style="color:var(--md);font-weight:700">('+ageDays+'d old \u2014 run/publish from the sheet)</span>':'')+
-    ' &middot; '+(via==="published"?"via data.json":"via API")+' &middot; auto-refreshing every minute';
+  PUB_TS = Date.parse(String(j.publishedAt||j.generatedAt||"").replace(" ","T")) || null;
+  MAXD   = maxD;
+  paintStatus();
 }
 function liveUrl(){
   try{return (localStorage.getItem('pfcApiUrl')||APPS_SCRIPT_URL_DEFAULT||"").trim();}catch(e){return APPS_SCRIPT_URL_DEFAULT;}
