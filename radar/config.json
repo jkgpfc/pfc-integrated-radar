@@ -1,0 +1,11 @@
+{
+  "host": "0.0.0.0",
+  "port": 8080,
+  "dataDir": "./data",
+  "lookbackDays": 90,
+  "fetchIntervalMinutes": 60,
+  "fetchTimeoutSec": 20,
+  "feedDelayMs": 150,
+  "maxFeeds": 0,
+  "userAgent": "PFC-Radar/1.0 (Power Finance Corporation; internal news intelligence)"
+}
