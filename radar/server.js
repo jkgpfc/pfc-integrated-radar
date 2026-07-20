@@ -116,9 +116,29 @@ function loadStore() { try { return JSON.parse(fs.readFileSync(STORE_F, 'utf8'))
 function saveStore(s) { fs.writeFileSync(STORE_F, JSON.stringify(s)); }
 
 /* ---------- classify one raw item into a dashboard payload item ----------- */
+/* Up to three terms explaining WHY this item was picked up: the standing search
+   that fetched it, plus the entity/theme the classifier actually matched. */
+function keywordsFor(raw, r) {
+  const kw = [];
+  const push = v => {
+    v = String(v || '').trim();
+    if (!v || v.length < 2) return;
+    if (kw.some(k => k.toLowerCase() === v.toLowerCase())) return;
+    if (kw.length < 3) kw.push(v);
+  };
+  push(String(raw.tag || '').replace(/^(AR|W|T|B|R|C)-/, ''));
+  if (r.watch) { push(r.watch.borrower); push(r.watch.subtype); }
+  if (r.bus)   { push(r.bus.sector); push(r.bus.state); }
+  if (r.borr)  { push(r.borr.source); push(r.borr.instrument); }
+  if (r.tre)   { push(r.tre.theme); }
+  if (r.comp)  { push(r.comp.competitor); push(r.comp.activity); }
+  if (r.reg)   { push(r.reg.regulator); push(r.reg.theme); }
+  return kw;
+}
+
 function toPayloadItem(raw, r) {
   const d = raw.pubDate.toISOString().slice(0, 10);
-  const base = { i: r.importance || 'Low', d, t: raw.title, l: raw.link, s: raw.source || '', f: raw.tag || '' };
+  const base = { i: r.importance || 'Low', d, t: raw.title, l: raw.link, s: raw.source || '', f: raw.tag || '', kw: keywordsFor(raw, r) };
   const out = [];
   if (r.radar === 'BUSINESS' && r.bus) {
     out.push({ r: 'BUSINESS', ...base, x: { cr: r.bus.size_cr || r.bus.exposure_cr || null, ben: r.bus.why || '' } });
@@ -209,7 +229,12 @@ async function runCycle(testMode) {
       try { r = ENGINE.classifyLocal_({ title: head, snippet: '', tag: (rec.items[0].f || '') }); }
       catch (e) { continue; }
       if (!r || !r.radar || r.radar === 'IGNORE') { store[k] = { ig: 1, ts: rec.ts }; dropped++; }
-      else if (rec.items[0].r !== r.radar) { rec.items[0].r = r.radar; rescored++; }
+      else {
+        if (rec.items[0].r !== r.radar) { rec.items[0].r = r.radar; rescored++; }
+        // refresh the "why we picked this up" terms for the whole book
+        const kw = keywordsFor({ tag: rec.items[0].f || '' }, r);
+        rec.items.forEach(it => { it.kw = kw; });
+      }
     }
     store.__engine = stamp;
     log('reclassified book for ' + stamp + ': ' + dropped + ' dropped, ' + rescored + ' moved');
@@ -221,6 +246,9 @@ async function runCycle(testMode) {
     if (store[k].items) all.push(...store[k].items);
   }
   all.sort((a, b) => b.d.localeCompare(a.d));
+  // Keep the book bounded: newest first, hard cap so the payload stays light.
+  all.sort((x, y) => String(y.d).localeCompare(String(x.d)));
+  if (all.length > 5000) { log('capping book at 5000 (was ' + all.length + ')'); all.length = 5000; }
   const istNow = new Date(Date.now() + 330*60000).toISOString().slice(0,16).replace('T',' ');
   const payload = { generatedAt: istNow, sourceNote: 'PFC-NRD auto-publisher ' + ENGINE.version, items: all };
   fs.writeFileSync(DATA_F, JSON.stringify(payload));
