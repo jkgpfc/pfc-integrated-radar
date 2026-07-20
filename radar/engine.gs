@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * PFC NEWS RADAR DASHBOARD (PFC-NRD) — v10.7
+ * PFC NEWS RADAR DASHBOARD (PFC-NRD) — v10.8
  * ============================================================================
  * One Apps Script, one sheet, one pipeline, SIX registers:
  *
@@ -153,7 +153,7 @@
  *   4. If a run ever times out: Manual steps → step0_Version, then step1..step5.
  */
 
-var PFC_VERSION = 'PFC News Radar Dashboard (PFC-NRD) v10.7';
+var PFC_VERSION = 'PFC News Radar Dashboard (PFC-NRD) v10.8';
 
 /* ==========================================================================
  * >>> START HERE <<<  —  runEverything()
@@ -1979,6 +1979,11 @@ var PFC_STOCKTIP_RE_EXTRA = /loading up on|\bthis 1 etf\b|best etfs?|top etfs?|i
  *  FD/RD rate tables, senior-citizen rates, savings-account interest, PPF/NSC
  *  and the like are household personal finance - not PFC's cost of funds,
  *  however often they say "rates". */
+/** v10.8 - Sovereign Gold Bonds and other retail investment instruments.
+ *  SGB issue/redemption prices, gold/silver ETFs and RBI retail direct are
+ *  household investment products, not PFC's borrowing programme. */
+var PFC_RETAIL_INVEST_RE = /sovereign gold bond|\bsgbs?\b|gold bonds?\b|gold (etf|scheme|price|rate)|silver (etf|price)|\brbi retail direct\b|retail direct (scheme|platform)|premature redemption|redemption price[^.]{0,20}(sgb|gold)|\bnps\b (scheme|return)|mutual fund/i;
+
 var PFC_RETAIL_DEPOSIT_RE = /\b(fixed|term|recurring) deposits?\b|\bfds?\b[^.]{0,20}(rate|interest|return)|\b(fd|rd) (rates?|interest)|senior citizens?[^.]{0,30}(fd|deposit|rate|scheme|saving)|savings? (account|bank) (interest|rate)|\bppf\b|\bnsc\b|\bkvp\b|sukanya|post office (scheme|deposit|saving)|small savings? (scheme|rate)|highest (interest|fd) rate|best (fd|deposit) rate|which bank (offers|gives)/i;
 
 /** v10.7 - Regional-language reposts. If most of the headline is not Latin
@@ -2982,6 +2987,7 @@ function classifyLocal_(item) {
   if (pfcEquityNoise_(lower) && !PFC_HARD_EVENT_RE.test(lower)) return pfcIgnore_();   // v9.7: equity-market noise
   if (PFC_NON_LENDING_PROC_RE.test(lower)) return pfcIgnore_();                        // v9.8: ordinary procurement
   if (PFC_RETAIL_DEPOSIT_RE.test(lower)) return pfcIgnore_();                          // v10.7: retail deposit products
+  if (PFC_RETAIL_INVEST_RE.test(lower)) return pfcIgnore_();                           // v10.8: SGB / retail investment products
   if (pfcNonLatinHeadline_(item.title)) return pfcIgnore_();                           // v10.7: regional-language repost
   if (PFC_AIRLINE_OPS_RE.test(lower) && !PFC_AIRPORT_PROJECT_RE.test(lower)) return pfcIgnore_();   // v9.8: airline ops
   // v9.1 — non-infra industries (paper, textile, FMCG, hotels...) are outside PFC's
