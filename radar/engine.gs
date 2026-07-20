@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * PFC NEWS RADAR DASHBOARD (PFC-NRD) — v10.8
+ * PFC NEWS RADAR DASHBOARD (PFC-NRD) — v10.9
  * ============================================================================
  * One Apps Script, one sheet, one pipeline, SIX registers:
  *
@@ -153,7 +153,7 @@
  *   4. If a run ever times out: Manual steps → step0_Version, then step1..step5.
  */
 
-var PFC_VERSION = 'PFC News Radar Dashboard (PFC-NRD) v10.8';
+var PFC_VERSION = 'PFC News Radar Dashboard (PFC-NRD) v10.9';
 
 /* ==========================================================================
  * >>> START HERE <<<  —  runEverything()
@@ -1118,17 +1118,17 @@ function cleanTitle_(t) { return String(t).replace(/ - [^-]{2,40}$/, '').trim();
 
 function pfcExtractAmount_(value) {
   var text = String(value || '').replace(/[\u2013\u2014-]/g, ' ').replace(/\s+/g, ' ');
-  var match = text.match(/(?:\u20B9|rs\.?|inr)\s*([\d,.]+)\s*(lakh\s*crore|crore|cr\b|billion|bn\b|million|mn\b)?/i);
+  var match = text.match(/(?:\u20B9|rs\.?|inr)\s*([\d,.]+)\s*(lakh\s*crore|trillion|tn\b|crore|cr\b|billion|bn\b|million|mn\b)?/i);
   if (match) {
     var number = Number(match[1].replace(/,/g, ''));
     var unit = String(match[2] || 'crore').toLowerCase();
-    var multiplier = /lakh/.test(unit) ? 100000 : /billion|\bbn/.test(unit) ? 100 : /million|\bmn/.test(unit) ? 0.1 : 1;
+    var multiplier = /lakh|trillion|\btn/.test(unit) ? 100000 : /billion|\bbn/.test(unit) ? 100 : /million|\bmn/.test(unit) ? 0.1 : 1;
     return { crore: Number.isFinite(number) ? number * multiplier : null, raw: match[0], currency: 'INR' };
   }
-  match = text.match(/([\d,.]+)\s*(lakh\s*crore|crore|cr)\b/i);   // bare "5000 crore"
+  match = text.match(/([\d,.]+)\s*(lakh\s*crore|trillion|crore|cr)\b/i);   // bare "5000 crore" / "1 trillion"
   if (match) {
     var bare = Number(match[1].replace(/,/g, ''));
-    var bareMultiplier = /lakh/i.test(match[2]) ? 100000 : 1;
+    var bareMultiplier = /lakh|trillion/i.test(match[2]) ? 100000 : 1;
     return { crore: Number.isFinite(bare) ? bare * bareMultiplier : null, raw: match[0], currency: 'INR' };
   }
   match = text.match(/(?:us\$|usd|\$)\s*([\d,.]+)\s*(billion|bn\b|million|mn\b)?/i);
@@ -1304,9 +1304,13 @@ var PFC_PROMOTER_GROUPS = [
   'Ayana Renewable', 'Sembcorp', 'Hero Future Energies', 'O2 Power', 'Fourth Partner',
   'Amp Energy', 'Amplus', 'Gentari', 'Vikram Solar', 'Waaree', 'Premier Energies', 'Gensol',
   'Welspun', 'Mytrah', 'Sanjiv Goenka', 'RP-Sanjiv Goenka', 'KSK Energy', 'Coastal Energen',
-  'Ind-Barath', 'Meenakshi Energy', 'Athena', 'Sravanthi', 'RattanIndia', 'Videocon',
-  'Bhushan Power', 'Monnet Ispat', 'Alok Industries', 'Future Group', 'Go First', 'Byju',
-  'IL&FS', 'Dewan Housing', 'DHFL', 'SREI', 'Reliance Capital', 'Zee', 'Subhash Chandra'
+  'Ind-Barath', 'Meenakshi Energy', 'Athena', 'Sravanthi', 'RattanIndia',
+  // v10.9: names below are NOT in PFC's lending universe (housing finance,
+  // NBFC, media, retail, aviation, steel, edtech). They were generating
+  // borrower alerts for companies we have no exposure to. Removed:
+  // IL&FS, DHFL/Dewan Housing, SREI, Reliance Capital, Zee/Subhash Chandra,
+  // Byju, Go First, Future Group, Alok Industries, Videocon, Bhushan Power,
+  // Monnet Ispat. Add any back to this list if exposure exists.
 ];
 var PFC_PROMOTER_RE = new RegExp('\\b(' + PFC_PROMOTER_GROUPS.map(function (n) {
   return n.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -1982,6 +1986,19 @@ var PFC_STOCKTIP_RE_EXTRA = /loading up on|\bthis 1 etf\b|best etfs?|top etfs?|i
 /** v10.8 - Sovereign Gold Bonds and other retail investment instruments.
  *  SGB issue/redemption prices, gold/silver ETFs and RBI retail direct are
  *  household investment products, not PFC's borrowing programme. */
+/** v10.9 - Ordinary crime and law-and-order reporting. Cyber-fraud explainers,
+ *  local police files, murder/assault/kidnapping and traffic cases are not
+ *  credit events. Corporate financial crime against a borrower still comes
+ *  through, because those headlines carry the borrower's name and the
+ *  fraud/NCLT/ED vocabulary the Watch radar tests for separately. */
+var PFC_CRIME_NOISE_RE = /crime file|police (file|complaint|station|arrest)|\bfir\b (lodged|filed|registered)|murder|rape\b|assault|kidnap|abduct|molest|theft|burglar|robbery|chain snatch|drug (haul|bust|seiz)|narcotic|liquor (haul|seiz)|road accident|hit[- ]and[- ]run|traffic (police|challan)|cyber (fraud|crime) (network|racket|gang)|mule account|sextortion|honeytrap|matrimonial fraud|dowry|missing person/i;
+
+/** v10.9 - Crime blotter and local police news. Murder, assault, theft, traffic
+ *  accidents and court reporting of ordinary crime carry no lending signal.
+ *  Economic offences against a borrower stay in Borrower Watch via the fraud
+ *  and NCLT rules, which run before this gate. */
+var PFC_CRIME_BLOTTER_RE = /\bcrime (file|files|branch|news|report|diary)\b|\bmurder(ed|s)?\b|\bmurder case\b|\brape[sd]?\b|\bmolest|\bkidnap|\babduct|\bassault(ed)?\b|\bstabb(ed|ing)|\bshot dead\b|\bloot(ed)?\b|\bchain snatch|\bburglar|\bpickpocket|\bhit[- ]and[- ]run\b|road accident|\bmishap\b|\bdrowned?\b|\bsuicide\b|\bmissing (girl|boy|woman|man|child)\b|\bmob\b|\briot|\bdacoity\b|\beve[- ]teas/i;
+
 var PFC_RETAIL_INVEST_RE = /sovereign gold bond|\bsgbs?\b|gold bonds?\b|gold (etf|scheme|price|rate)|silver (etf|price)|\brbi retail direct\b|retail direct (scheme|platform)|premature redemption|redemption price[^.]{0,20}(sgb|gold)|\bnps\b (scheme|return)|mutual fund/i;
 
 var PFC_RETAIL_DEPOSIT_RE = /\b(fixed|term|recurring) deposits?\b|\bfds?\b[^.]{0,20}(rate|interest|return)|\b(fd|rd) (rates?|interest)|senior citizens?[^.]{0,30}(fd|deposit|rate|scheme|saving)|savings? (account|bank) (interest|rate)|\bppf\b|\bnsc\b|\bkvp\b|sukanya|post office (scheme|deposit|saving)|small savings? (scheme|rate)|highest (interest|fd) rate|best (fd|deposit) rate|which bank (offers|gives)/i;
@@ -2988,6 +3005,8 @@ function classifyLocal_(item) {
   if (PFC_NON_LENDING_PROC_RE.test(lower)) return pfcIgnore_();                        // v9.8: ordinary procurement
   if (PFC_RETAIL_DEPOSIT_RE.test(lower)) return pfcIgnore_();                          // v10.7: retail deposit products
   if (PFC_RETAIL_INVEST_RE.test(lower)) return pfcIgnore_();                           // v10.8: SGB / retail investment products
+  if (PFC_CRIME_BLOTTER_RE.test(lower) && !/\bnclt\b|insolven|wil+ful default|sarfaesi|\bfraud\b|forensic|\bed\b |enforcement directorate|money launder/.test(lower)) return pfcIgnore_();   // v10.9: crime blotter
+  if (PFC_CRIME_NOISE_RE.test(lower)) return pfcIgnore_();                             // v10.9: ordinary crime reporting
   if (pfcNonLatinHeadline_(item.title)) return pfcIgnore_();                           // v10.7: regional-language repost
   if (PFC_AIRLINE_OPS_RE.test(lower) && !PFC_AIRPORT_PROJECT_RE.test(lower)) return pfcIgnore_();   // v9.8: airline ops
   // v9.1 — non-infra industries (paper, textile, FMCG, hotels...) are outside PFC's
