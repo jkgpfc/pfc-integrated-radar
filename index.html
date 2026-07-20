@@ -103,6 +103,11 @@ main{max-width:1180px;margin:0 auto 60px;padding:0 20px}
 .card a.title{font-family:Georgia,serif;font-size:17px;font-weight:600;line-height:1.4;
   text-decoration:none;display:block}
 .card a.title:hover{text-decoration:underline;color:var(--seg)}
+.rname{font-weight:800;font-size:10px;letter-spacing:.6px;margin-right:8px;opacity:.85}
+.r-BUSINESS{color:var(--bus)}.r-WATCH{color:var(--watch)}.r-BORROWING{color:var(--borr)}
+.r-TREASURY{color:var(--tre)}.r-COMPETITOR{color:var(--comp)}.r-REGULATORY{color:var(--reg)}
+.kws{margin-left:8px}
+.kws i{font-style:normal;font-size:10.5px;padding:1px 7px;margin-right:4px;border-radius:9px;background:rgba(0,0,0,.05);color:var(--muted)}
 .srcline{margin-top:6px;display:flex;align-items:center;flex-wrap:wrap;gap:8px;font-size:12px}
 .outlet{font-weight:700}
 .outlet.t1{color:#0b6e4f}.outlet.t2{color:#1a3c6e}.outlet.t3{color:var(--ink)}.outlet.t5{color:var(--muted)}
@@ -176,8 +181,8 @@ main{max-width:1180px;margin:0 auto 60px;padding:0 20px}
       <path d="M92 30l2.6 6.4L101 39l-6.4 2.6L92 48l-2.6-6.4L83 39l6.4-2.6z" fill="#E8801A"/>
     </svg>
     <span class="brandtext">
-      <b>PFC&rsquo;s Realtime News Radar Dashboard</b>
-      <small><em>PFC-NRD</em> &nbsp;&middot;&nbsp; Business &middot; Borrower &middot; Borrowings &middot; Treasury &middot; Peers &middot; Regulatory</small>
+      <b>PFC&rsquo;s News Radar Dashboard</b>
+      <small><em>PFC-NRD</em> &nbsp;&middot;&nbsp; Business &middot; Borrowers &middot; Borrowings &middot; Treasury &middot; Peers &middot; Regulators</small>
     </span>
   </div>
   <div class="hspace"></div>
@@ -206,9 +211,9 @@ main{max-width:1180px;margin:0 auto 60px;padding:0 20px}
   <select id="fSrc"    onchange="setPage();render()" title="Source tier"></select>
   <select id="sortBy" onchange="setPage();render()">
     <option value="date" selected>Sort: Newest</option>
-    <option value="imp">Sort: Priority</option>
+    
     <option value="amt">Sort: Amount</option>
-    <option value="source">Sort: Source (A\u2013Z)</option>
+    <option value="source">Sort: Source (A–Z)</option>
   </select>
   </div>
 </div>
@@ -222,7 +227,7 @@ main{max-width:1180px;margin:0 auto 60px;padding:0 20px}
   <button class="more hide" id="moreBtn" onclick="page++;render(true)">Show more</button>
   <div class="empty hide" id="empty">No items match the current filters.<span id="emptyWhy"></span></div>
   <div style="text-align:center;color:var(--muted);font-size:11px;padding:26px 0 0;border-top:1px solid var(--line);margin-top:30px">
-    PFC-NRD v10.8 &middot; classification engine mirrored from the Google Sheet pipeline &middot; auto-generated intelligence, verify before circulation
+    PFC-NRD v10.9 &middot; classification engine mirrored from the Google Sheet pipeline &middot; auto-generated intelligence, verify before circulation
   </div>
 </main>
 
@@ -493,7 +498,7 @@ function scoreItem(it){
 }
 
 /* ---------- state ---------- */
-const RADARS=[["ALL","All Radars"],["BUSINESS","Business"],["WATCH","Borrower"],["BORROWING","Borrowings"],["TREASURY","Treasury"],["COMPETITOR","Peers"],["REGULATORY","Regulatory"]];
+const RADARS=[["ALL","All Radars"],["BUSINESS","Business"],["WATCH","Borrowers"],["BORROWING","Borrowings"],["TREASURY","Treasury"],["COMPETITOR","Peers"],["REGULATORY","Regulators"]];
 const RNAME=Object.fromEntries(RADARS.map(([k,v])=>[k,v.toUpperCase()]));
 const IMP_RANK={High:0,Medium:1,Low:2};
 let items=[], generatedAt="", srcNote="";
@@ -606,6 +611,15 @@ function toks(t){
     .split(/\s+/).map(w=>w.replace(/(ies|es|s|ing|ed)$/,''))    // light stem: invests==invest
     .filter(w=>w.length>=3||/^\d+$/.test(w));                    // keep numbers like 15037
 }
+function capOf(t){
+  const m=String(t||'').match(/(\d[\d,.]*)\s*(gwh|gw|mwh|mw|kwh)\b/i);
+  if(!m) return null;
+  let v=parseFloat(m[1].replace(/,/g,'')); if(!isFinite(v)) return null;
+  const u=m[2].toLowerCase();
+  if(u==='gw'||u==='gwh') v*=1000;
+  if(u==='kwh') v/=1000;
+  return Math.round(v*100)/100 + (/h$/.test(u)?'h':'');   // keep MW and MWh distinct
+}
 function isDup(a,b){
   if(a.l&&b.l&&a.l===b.l&&a.r!==b.r)return false;   // intentional cross-post (capex: Watch + Business)
   const s=sim(a.tk,b.tk);
@@ -613,6 +627,14 @@ function isDup(a,b){
   if(ea.size&&eb.size){ let shared=false; for(const e of ea)if(eb.has(e))shared=true;
     if(!shared)return false; }                     // different entity sets -> never the same story
   if(s>=0.62)return true;
+  // Same project capacity + a shared entity (or clear wording overlap) is the
+  // same story reported in different words - "bags SECI award for 324 MW" and
+  // "gets SECI approval for 324 MW" carry no rupee figure to match on.
+  const ca=a.cap!==undefined?a.cap:(a.cap=capOf(a.t)), cb=b.cap!==undefined?b.cap:(b.cap=capOf(b.t));
+  if(ca&&cb&&ca===cb){
+    let sharedEnt=false; for(const e of ea)if(eb.has(e))sharedEnt=true;
+    if(sharedEnt||s>=0.28)return true;
+  }
   if(sameAmt(a.cr,b.cr)&&a.cr>=50){
     // Identical amount is a signal, but NOT sufficient: many distinct Rs 5,000-cr
     // deals exist. Merge only if the two items also share the same lead entity or
@@ -912,7 +934,7 @@ function render(keepScroll){
 /* Long agency headlines are unreadable at a glance. Trim for DISPLAY only -
    the link, the search index and the classifier all keep the full text. */
 function cleanSrc(s){
-  return String(s||'').replace(/^[\s|\-\u2013\u2014\u2022,;:\/]+/,'').replace(/[\s|\-\u2013\u2014\u2022,;:\/]+$/,'').trim();
+  return String(s||'').replace(/[\u20B9\u0024\u20AC\u00A3]/g,'').replace(/^[\s|\-\u2013\u2014\u2022,;:\/]+/,'').replace(/[\s|\-\u2013\u2014\u2022,;:\/]+$/,'').trim();
 }
 function crisp(t,maxWords){
   maxWords=maxWords||14;
@@ -935,8 +957,11 @@ function card(it){
   const note=(!bare&&it.x&&(it.x.ben||it.x.imp))?'<div class="note">'+esc(it.x.ben||it.x.imp)+(it.x.hed?' &middot; <i>'+esc(it.x.hed)+'</i>':'')+'</div>':'';
   const rk=srcRank(it);
   const outlet=cleanSrc(it.s);
+  const kws=(it.kw||[]).slice(0,3).filter(Boolean);
   const srcLine='<div class="srcline">'+
+    '<span class="rname r-'+it.r+'">'+(RNAME[it.r]||it.r)+'</span>'+
     (outlet?'<span class="outlet t'+rk+'">'+esc(outlet)+'</span>':'<span class="outlet t5">source not stated</span>')+
+    (kws.length?'<span class="kws">'+kws.map(k=>'<i>'+esc(k)+'</i>').join('')+'</span>':'')+
     (it.nsrc>1?'<span class="nsrc">'+it.nsrc+' sources</span>':'')+'</div>';
   return '<article class="card" data-r="'+it.r+'"><div class="cline">'+
 
