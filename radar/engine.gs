@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * PFC NEWS RADAR DASHBOARD (PFC-NRD) — v10.6
+ * PFC NEWS RADAR DASHBOARD (PFC-NRD) — v10.7
  * ============================================================================
  * One Apps Script, one sheet, one pipeline, SIX registers:
  *
@@ -153,7 +153,7 @@
  *   4. If a run ever times out: Manual steps → step0_Version, then step1..step5.
  */
 
-var PFC_VERSION = 'PFC News Radar Dashboard (PFC-NRD) v10.6';
+var PFC_VERSION = 'PFC News Radar Dashboard (PFC-NRD) v10.7';
 
 /* ==========================================================================
  * >>> START HERE <<<  —  runEverything()
@@ -1975,6 +1975,25 @@ var PFC_STOCKTIP_RE_EXTRA = /loading up on|\bthis 1 etf\b|best etfs?|top etfs?|i
  *  Currency/banknote printing, security paper, stationery, uniforms, catering
  *  and the like are ordinary departmental procurement, whoever floats them -
  *  including the RBI's own printing arm. */
+/** v10.7 - RETAIL DEPOSIT & SMALL-SAVINGS PRODUCTS.
+ *  FD/RD rate tables, senior-citizen rates, savings-account interest, PPF/NSC
+ *  and the like are household personal finance - not PFC's cost of funds,
+ *  however often they say "rates". */
+var PFC_RETAIL_DEPOSIT_RE = /\b(fixed|term|recurring) deposits?\b|\bfds?\b[^.]{0,20}(rate|interest|return)|\b(fd|rd) (rates?|interest)|senior citizens?[^.]{0,30}(fd|deposit|rate|scheme|saving)|savings? (account|bank) (interest|rate)|\bppf\b|\bnsc\b|\bkvp\b|sukanya|post office (scheme|deposit|saving)|small savings? (scheme|rate)|highest (interest|fd) rate|best (fd|deposit) rate|which bank (offers|gives)/i;
+
+/** v10.7 - Regional-language reposts. If most of the headline is not Latin
+ *  script the desk cannot read it, and the English version of the same story is
+ *  normally already in the book. */
+function pfcNonLatinHeadline_(title) {
+  var t = String(title || '');
+  // Devanagari, Bengali, Tamil, Telugu, Kannada, Malayalam, Gujarati, Odia,
+  // Gurmukhi, Cyrillic, Arabic, CJK, Kana.
+  var other = (t.match(/[\u0900-\u0DFF\u0400-\u04FF\u0600-\u06FF\u4E00-\u9FFF\u3040-\u30FF]/g) || []).length;
+  if (other >= 10) return true;                 // a real block of regional script
+  var latin = (t.match(/[A-Za-z]/g) || []).length;
+  return other > 0 && latin < 12;               // mostly script, little English
+}
+
 var PFC_NON_LENDING_PROC_RE = /currency (printing|note|paper|chest)|bank ?note|polymer note|security (printing|paper|ink)|\bmints?\b[^.]{0,25}(coin|currency|note)|coinage|stationery|uniforms?|liver(y|ies)|furniture|catering|housekeeping|manpower supply|security guard|\bhousekeeping\b|office (supplies|equipment)|printer cartridge|air ?conditioner|\bfurnishing/i;
 
 /** v9.8 - AIRLINE / ROUTE OPERATIONS.
@@ -2388,7 +2407,14 @@ function pfcFundingPrint_(lower, title, text) {
 /** BORROWING — market liquidity signal (routed here per LPCU brief:
  *  high/low liquidity of funds directly drives PFC issuance timing). */
 function pfcLiquiditySignal_(lower) {
-  return /\bvrr\b|\bvrrr\b|\bomo\b|open market operation|liquidity (surplus|deficit|injection|absorption)|banking system liquidity|durable liquidity|\bcrr\b (cut|hike|change)|cash reserve ratio/.test(lower);
+  // Unambiguous phrases stand on their own.
+  if (/open market operation|liquidity (surplus|deficit|injection|absorption)|banking system liquidity|durable liquidity|\bcrr\b (cut|hike|change)|cash reserve ratio/.test(lower)) return true;
+  // Bare acronyms (VRR/VRRR/OMO) are three letters that turn up in ordinary
+  // words and song titles alike, so they count only with money-market context.
+  if (/\bvrr\b|\bvrrr\b|\bomo\b/.test(lower)) {
+    return /\brbi\b|reserve bank|auction|repo|liquidity|money market|banking system|\bcrore\b|lakh crore|central bank|\bbonds?\b|\bg[- ]?sec\b|treasury bill|\bt[- ]?bill/.test(lower);
+  }
+  return false;
 }
 
 function buildLiquidityBorrowingHit_(lower, title, text) {
@@ -2955,6 +2981,8 @@ function classifyLocal_(item) {
   if (PFC_SHARE_PRICE_RE.test(lower)) return pfcIgnore_();       // v9.3: share-price / investor-advice chatter
   if (pfcEquityNoise_(lower) && !PFC_HARD_EVENT_RE.test(lower)) return pfcIgnore_();   // v9.7: equity-market noise
   if (PFC_NON_LENDING_PROC_RE.test(lower)) return pfcIgnore_();                        // v9.8: ordinary procurement
+  if (PFC_RETAIL_DEPOSIT_RE.test(lower)) return pfcIgnore_();                          // v10.7: retail deposit products
+  if (pfcNonLatinHeadline_(item.title)) return pfcIgnore_();                           // v10.7: regional-language repost
   if (PFC_AIRLINE_OPS_RE.test(lower) && !PFC_AIRPORT_PROJECT_RE.test(lower)) return pfcIgnore_();   // v9.8: airline ops
   // v9.1 — non-infra industries (paper, textile, FMCG, hotels...) are outside PFC's
   // universe unless the story itself concerns power/energy assets (captive plant etc.)
@@ -3046,6 +3074,10 @@ function classifyLocal_(item) {
               action: 'RM desk: compare coupon/spread with PFC secondary levels before the next issuance.' };
     }
     if (!hit) {
+      // v10.7: this was an unconditional catch-all, so anything that reached the
+      // borrowing branch became a "Funding lead" - a song title with "Vrrr" in
+      // it included. Require a real funding signal before inventing one.
+      if (!/\b(raise[sd]?|raising|borrow(s|ed|ing)?|bonds?|\bncds?\b|debenture|loans?|credit line|line of credit|syndicat\w*|refinanc\w*|issuance|issues?|placement|\becb\b|term sheet|fund(ing|s)? (raise|plan|programme|program)|mobilis\w*|mobiliz\w*|tier[- ]?(i|ii|1|2)|commercial paper)\b/.test(lower)) return pfcIgnore_();
       var a2 = pfcExtractAmount_(text);
       hit = { source: pfcEntity_(title), instrument: 'Funding lead', amount: a2.raw || 'Not stated',
               est_cr: a2.crore, currency: a2.currency || 'Not stated', tenor: pfcTenor_(text),
