@@ -1,7 +1,7 @@
 name: radar
 on:
   schedule:
-    - cron: '*/20 * * * *'
+    - cron: '*/5 * * * *'
   workflow_dispatch: {}
 permissions:
   contents: write
@@ -11,14 +11,14 @@ concurrency:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    timeout-minutes: 58
+    timeout-minutes: 340
     steps:
       - uses: actions/checkout@v4
-      - name: Publish every 5 minutes for ~50 minutes
+      - name: Publish every 5 minutes for ~5 hours
         run: |
           git config user.name 'pfc-nrd-bot'
           git config user.email 'pfc-nrd-bot@users.noreply.github.com'
-          END=$((SECONDS+3000))
+          END=$((SECONDS+18000))
           while [ $SECONDS -lt $END ]; do
             node radar/server.js --once || true
             cp radar/data/data.json data.json || true
