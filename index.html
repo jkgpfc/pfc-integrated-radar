@@ -222,7 +222,7 @@ main{max-width:1180px;margin:0 auto 60px;padding:0 20px}
   <button class="more hide" id="moreBtn" onclick="page++;render(true)">Show more</button>
   <div class="empty hide" id="empty">No items match the current filters.<span id="emptyWhy"></span></div>
   <div style="text-align:center;color:var(--muted);font-size:11px;padding:26px 0 0;border-top:1px solid var(--line);margin-top:30px">
-    PFC-NRD v10.6 &middot; classification engine mirrored from the Google Sheet pipeline &middot; auto-generated intelligence, verify before circulation
+    PFC-NRD v10.8 &middot; classification engine mirrored from the Google Sheet pipeline &middot; auto-generated intelligence, verify before circulation
   </div>
 </main>
 
@@ -690,7 +690,7 @@ function paintStatus(){
     ? '<br><span style="color:var(--hi);font-weight:700">No fresh publish for '+agoText(age).replace(' ago','')+' \u2014 auto-publisher may be down.</span>'
     : '';
   el.innerHTML='<span style="color:'+col+';font-weight:700">\u25CF LIVE '+when+'</span>'+ago+'<br>'+
-    'data through <b>'+MAXD+'</b> &middot; auto-refreshing every minute'+warn;
+    'data through <b>'+MAXD+'</b> &middot; page re-checks every minute'+warn;
 }
 setInterval(paintStatus,30000);
 
