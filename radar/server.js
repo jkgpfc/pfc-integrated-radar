@@ -194,7 +194,29 @@ async function runCycle(testMode) {
   // prune beyond the window, assemble payload
   const minTs = Date.now() - lookback;
   const all = [];
+  // v10.8: a rule fix should clean the existing book too. When the engine
+  // version changes, re-run every stored headline through the classifier - it
+  // is pure regex over ~2k items, so it costs a fraction of a second.
+  const stamp = 'engine:' + ENGINE.version;
+  if (store.__engine !== stamp) {
+    let dropped = 0, rescored = 0;
+    for (const k of Object.keys(store)) {
+      if (k === '__engine') continue;
+      const rec = store[k];
+      const head = rec.items && rec.items[0] ? rec.items[0].t : null;
+      if (!head) continue;
+      let r = null;
+      try { r = ENGINE.classifyLocal_({ title: head, snippet: '', tag: (rec.items[0].f || '') }); }
+      catch (e) { continue; }
+      if (!r || !r.radar || r.radar === 'IGNORE') { store[k] = { ig: 1, ts: rec.ts }; dropped++; }
+      else if (rec.items[0].r !== r.radar) { rec.items[0].r = r.radar; rescored++; }
+    }
+    store.__engine = stamp;
+    log('reclassified book for ' + stamp + ': ' + dropped + ' dropped, ' + rescored + ' moved');
+  }
+
   for (const k of Object.keys(store)) {
+    if (k === '__engine') continue;
     if (store[k].ts < minTs) { delete store[k]; continue; }
     if (store[k].items) all.push(...store[k].items);
   }
