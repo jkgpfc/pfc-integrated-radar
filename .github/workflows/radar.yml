@@ -1,7 +1,7 @@
 name: radar
 on:
   schedule:
-    - cron: '*/5 * * * *'
+    - cron: '*/15 * * * *'
   workflow_dispatch: {}
 permissions:
   contents: write
@@ -11,22 +11,18 @@ concurrency:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    timeout-minutes: 340
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Publish every 5 minutes for ~5 hours
+      - name: Fetch, classify and publish once
         run: |
           git config user.name 'pfc-nrd-bot'
           git config user.email 'pfc-nrd-bot@users.noreply.github.com'
-          END=$((SECONDS+18000))
-          while [ $SECONDS -lt $END ]; do
-            node radar/server.js --once || true
-            cp radar/data/data.json data.json || true
-            git add data.json radar/data/store.json
-            if ! git diff --cached --quiet; then
-              git commit -m "NRD auto-publish $(TZ=Asia/Kolkata date '+%F %H:%M') [skip ci]"
-              git pull --rebase --autostash origin main || true
-              git push || true
-            fi
-            sleep 240
-          done
+          node radar/server.js --once || true
+          cp radar/data/data.json data.json || true
+          git add data.json radar/data/store.json
+          if ! git diff --cached --quiet; then
+            git commit -m "NRD auto-publish $(TZ=Asia/Kolkata date '+%F %H:%M') [skip ci]" || true
+          fi
+          git pull --rebase --autostash origin main || git rebase --abort || true
+          git push || true
