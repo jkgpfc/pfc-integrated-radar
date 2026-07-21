@@ -207,24 +207,24 @@ async function runCycle(testMode) {
     // Every standing feed asks Google News for when:7d, so a normal cycle can
     // only ever see the last week. Backfill re-runs each query across a series
     // of explicit date windows, which is the only way to reach genuine history.
-    // Auto-backfill once: if the book has no real history yet, walk the quarter
-    // rather than waiting 90 days for when:7d to accumulate it.
-    let autoBackfill = false;
-    if (!backfillMode && !store.__backfilled) {
-      let oldest = Infinity;
-      for (const k of Object.keys(store)) {
-        if (k === '__engine' || k === '__backfilled') continue;
-        if (store[k] && store[k].ts && store[k].ts < oldest) oldest = store[k].ts;
-      }
-      const ageDays = isFinite(oldest) ? (Date.now() - oldest) / 86400000 : 0;
-      if (ageDays < (CFG.lookbackDays || 90) * 0.7) {
-        autoBackfill = true;
-        log('book only ' + Math.round(ageDays) + ' days deep - running one-off backfill');
+    // Backfill ONE window per cycle, never all of them. Walking the whole
+    // quarter inside a single cycle blocks publishing for hours - the loop that
+    // publishes is the same loop that fetches, so a long fetch is indistinguishable
+    // from a dead publisher. Thirteen cycles (~1 hour) cover the quarter while
+    // every cycle still publishes on time.
+    let windows = [null];
+    if (!store.__backfilled) {
+      const allW = dateWindows(CFG.lookbackDays || 90, 7);
+      const idx = store.__bfWindow || 0;
+      if (idx < allW.length) {
+        windows = [allW[idx]];
+        store.__bfWindow = idx + 1;
+        log('backfill window ' + (idx + 1) + '/' + allW.length + ': ' + allW[idx].from + ' to ' + allW[idx].to);
+      } else {
+        store.__backfilled = Date.now();
+        log('backfill complete - ' + allW.length + ' windows walked');
       }
     }
-    if (windows.length > 1) { store.__backfilled = Date.now(); log('backfill complete'); }
-    const windows = (backfillMode || autoBackfill) ? dateWindows(CFG.lookbackDays || 90, 7) : [null];
-    if (windows.length > 1) log('backfill: ' + list.length + ' feeds x ' + windows.length + ' windows');
 
     for (const f of list) {
       for (const w of windows) {
@@ -266,7 +266,7 @@ async function runCycle(testMode) {
   if (store.__engine !== stamp) {
     let dropped = 0, rescored = 0;
     for (const k of Object.keys(store)) {
-      if (k === '__engine' || k === '__backfilled') continue;
+      if (k === '__engine' || k === '__backfilled' || k === '__bfWindow') continue;
       const rec = store[k];
       const head = rec.items && rec.items[0] ? rec.items[0].t : null;
       if (!head) continue;
@@ -286,7 +286,7 @@ async function runCycle(testMode) {
   }
 
   for (const k of Object.keys(store)) {
-    if (k === '__engine' || k === '__backfilled') continue;
+    if (k === '__engine' || k === '__backfilled' || k === '__bfWindow') continue;
     if (store[k].ts < minTs) { delete store[k]; continue; }
     if (store[k].items) all.push(...store[k].items);
   }
