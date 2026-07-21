@@ -227,7 +227,7 @@ main{max-width:1180px;margin:0 auto 60px;padding:0 20px}
   <button class="more hide" id="moreBtn" onclick="page++;render(true)">Show more</button>
   <div class="empty hide" id="empty">No items match the current filters.<span id="emptyWhy"></span></div>
   <div style="text-align:center;color:var(--muted);font-size:11px;padding:26px 0 0;border-top:1px solid var(--line);margin-top:30px">
-    PFC-NRD v10.9 &middot; classification engine mirrored from the Google Sheet pipeline &middot; auto-generated intelligence, verify before circulation
+    PFC-NRD v11.0 &middot; classification engine mirrored from the Google Sheet pipeline &middot; auto-generated intelligence, verify before circulation
   </div>
 </main>
 
@@ -800,6 +800,8 @@ function anchorDay(){
   return ANCHOR;
 }
 function inPeriod(it){
+  if(period>30) period=30;                        // Quarterly retired
+
   if(period<=0) return true;
   const n=dayNum(it.d);
   return !isNaN(n) && n > anchorDay()-period && n <= anchorDay();
@@ -892,7 +894,10 @@ function render(keepScroll){
   }).join('');
 
   // period + importance chips
-  document.getElementById('periodChips').innerHTML=[[1,"Daily"],[7,"Weekly"],[30,"Monthly"],[90,"Quarterly"]]
+  // Quarterly removed: Google News RSS serves roughly the last month, so the
+  // 90-day view was within ~25 items of Monthly and implied a depth of history
+  // the book does not yet hold.
+  document.getElementById('periodChips').innerHTML=[[1,"Daily"],[7,"Weekly"],[30,"Monthly"]]
     .map(([d,lab])=>'<button class="chip'+(period===d?' on':'')+'" onclick="period='+d+';setPage();render()">'+lab+'</button>').join('');
 
   const sort=document.getElementById('sortBy').value;
