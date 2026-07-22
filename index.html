@@ -227,7 +227,7 @@ main{max-width:1180px;margin:0 auto 60px;padding:0 20px}
   <button class="more hide" id="moreBtn" onclick="page++;render(true)">Show more</button>
   <div class="empty hide" id="empty">No items match the current filters.<span id="emptyWhy"></span></div>
   <div style="text-align:center;color:var(--muted);font-size:11px;padding:26px 0 0;border-top:1px solid var(--line);margin-top:30px">
-    PFC-NRD v11.0 &middot; classification engine mirrored from the Google Sheet pipeline &middot; auto-generated intelligence, verify before circulation
+    PFC-NRD v11.1 &middot; classification engine mirrored from the Google Sheet pipeline &middot; auto-generated intelligence, verify before circulation
   </div>
 </main>
 
@@ -962,7 +962,13 @@ function card(it){
   const note=(!bare&&it.x&&(it.x.ben||it.x.imp))?'<div class="note">'+esc(it.x.ben||it.x.imp)+(it.x.hed?' &middot; <i>'+esc(it.x.hed)+'</i>':'')+'</div>':'';
   const rk=srcRank(it);
   const outlet=cleanSrc(it.s);
-  const kws=(it.kw||[]).slice(0,3).filter(Boolean);
+  const KWX={BUSINESS:x=>[x.sec,x.st,x.prod],WATCH:x=>[x.bor,x.sub],BORROWING:x=>[x.src,x.inst],TREASURY:x=>[x.th],COMPETITOR:x=>[x.comp,x.act],REGULATORY:x=>[x.reg,x.th]};
+  // chips survive whichever publisher wrote the item: kw from the server, else
+  // derived from the sheet's context fields, else the fetch tag
+  let kws=(it.kw||[]).filter(Boolean);
+  if(!kws.length&&it.x&&KWX[it.r]) kws=KWX[it.r](it.x).filter(v=>v&&v!=='-');
+  if(!kws.length&&it.f) kws=[String(it.f).replace(/^(AR|W|T|B|R|C)-/,'')].filter(Boolean);
+  kws=kws.slice(0,3);
   const srcLine='<div class="srcline">'+
     '<span class="rname r-'+it.r+'">'+(RNAME[it.r]||it.r)+'</span>'+
     (outlet?'<span class="outlet t'+rk+'">'+esc(outlet)+'</span>':'<span class="outlet t5">source not stated</span>')+
