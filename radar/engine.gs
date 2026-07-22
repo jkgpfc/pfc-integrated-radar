@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * PFC NEWS RADAR DASHBOARD (PFC-NRD) — v11.1
+ * PFC NEWS RADAR DASHBOARD (PFC-NRD) — v11.2
  * ============================================================================
  * One Apps Script, one sheet, one pipeline, SIX registers:
  *
@@ -153,7 +153,7 @@
  *   4. If a run ever times out: Manual steps → step0_Version, then step1..step5.
  */
 
-var PFC_VERSION = 'PFC News Radar Dashboard (PFC-NRD) v11.1';
+var PFC_VERSION = 'PFC News Radar Dashboard (PFC-NRD) v11.2';
 
 /* ==========================================================================
  * >>> START HERE <<<  —  runEverything()
@@ -2002,6 +2002,11 @@ var PFC_CRIME_NOISE_RE = /crime file|police (file|complaint|station|arrest)|\bfi
  *  a real amount, real capacity, or PFC/REC itself. */
 var PFC_CEREMONY_RE = /\binaugurat|foundation stone|bhoomi ?pujan|flags? off|flagged off|dedicat(e[sd]?|ion)s?\b[^.]{0,60}to the nation|lays? (the )?foundation/i;
 
+/** v11.2 - what makes a ceremony ignorable: the OBJECT being inaugurated, not
+ *  the ceremony itself. Exhibitions, portals, offices and scheme launches are
+ *  events; plants, units and lines are projects and must flow to the desks. */
+var PFC_CEREMONY_FLUFF_RE = /exhibition|\bexpo\b|\bmela\b|awareness|campaign|portal|website|\bapp\b|mobile application|logo|\bbook\b|magazine|conclave|summit|workshop|seminar|celebration|samaroh|mahotsav|\bweek\b|\bdivas\b|\bday\b celebrat|office|bhavan|\bbuilding\b|centre of excellence|center of excellence|training (centre|center|programme|program)|statue|museum|\bpark\b(?! project)|gallery|\bbus(es)? fleet\b|\bbus service\b|train service|\bcoach\b|\brally\b|\byatra\b|marathon|\brun\b for|\brooftop\b(?![^.]{0,40}\d+\s*[mg]w)|(scheme|yojana|policy|programme|program) (launch|inaugurat)/i;
+
 var PFC_CRIME_BLOTTER_RE = /\bcrime (file|files|branch|news|report|diary)\b|\bmurder(ed|s)?\b|\bmurder case\b|\brape[sd]?\b|\bmolest|\bkidnap|\babduct|\bassault(ed)?\b|\bstabb(ed|ing)|\bshot dead\b|\bloot(ed)?\b|\bchain snatch|\bburglar|\bpickpocket|\bhit[- ]and[- ]run\b|road accident|\bmishap\b|\bdrowned?\b|\bsuicide\b|\bmissing (girl|boy|woman|man|child)\b|\bmob\b|\briot|\bdacoity\b|\beve[- ]teas/i;
 
 var PFC_RETAIL_INVEST_RE = /sovereign gold bond|\bsgbs?\b|gold bonds?\b|gold (etf|scheme|price|rate)|silver (etf|price)|\brbi retail direct\b|retail direct (scheme|platform)|premature redemption|redemption price[^.]{0,20}(sgb|gold)|\bnps\b (scheme|return)|mutual fund|index fund|\b(regular|direct)[- ](growth|plan)\b|\bnfo\b|new fund offer|\bidcw\b|nifty ?\d+|\bsensex\b|momentum \d+|gilt fund|debt fund|liquid fund|hybrid fund|arbitrage fund|\belss\b|(flexi|multi|small|mid|large)[- ]?cap fund/i;
@@ -3011,11 +3016,13 @@ function classifyLocal_(item) {
   if (PFC_RETAIL_DEPOSIT_RE.test(lower)) return pfcIgnore_();                          // v10.7: retail deposit products
   if (PFC_RETAIL_INVEST_RE.test(lower)) return pfcIgnore_();                           // v10.8: SGB / retail investment products
   if (PFC_CRIME_BLOTTER_RE.test(lower) && !/\bnclt\b|insolven|wil+ful default|sarfaesi|\bfraud\b|forensic|\bed\b |enforcement directorate|money launder/.test(lower)) return pfcIgnore_();   // v10.9: crime blotter
-  if (PFC_CEREMONY_RE.test(lower)) {                                                   // v11.1: ceremony needs substance
+  if (PFC_CEREMONY_RE.test(lower)) {                                                   // v11.2: drop ceremonial fluff only
     var _ca = pfcExtractAmount_(text);
     var _cm = lower.match(/(\d[\d,.]*)\s*(gw|mw)\b/);
     var _mw = _cm ? parseFloat(_cm[1].replace(/,/g, '')) * (_cm[2] === 'gw' ? 1000 : 1) : 0;
-    if (!((_ca.crore || 0) >= 100 || _mw >= 100 || /\bpfc\b|power finance|\brec\b (limited|ltd)/.test(lower))) return pfcIgnore_();
+    var _big = (_ca.crore || 0) >= 100 || _mw >= 100 || /\bpfc\b|power finance|\brec\b (limited|ltd)/.test(lower);
+    if (!_big && PFC_CEREMONY_FLUFF_RE.test(lower)) return pfcIgnore_();
+    // otherwise fall through: project inaugurations of any size route normally
   }
   if (PFC_CRIME_NOISE_RE.test(lower)) return pfcIgnore_();                             // v10.9: ordinary crime reporting
   if (pfcNonLatinHeadline_(item.title)) return pfcIgnore_();                           // v10.7: regional-language repost
