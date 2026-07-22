@@ -2005,7 +2005,7 @@ var PFC_CEREMONY_RE = /\binaugurat|foundation stone|bhoomi ?pujan|flags? off|fla
 /** v11.2 - what makes a ceremony ignorable: the OBJECT being inaugurated, not
  *  the ceremony itself. Exhibitions, portals, offices and scheme launches are
  *  events; plants, units and lines are projects and must flow to the desks. */
-var PFC_CEREMONY_FLUFF_RE = /exhibition|\bexpo\b|\bmela\b|awareness|campaign|portal|website|\bapp\b|mobile application|logo|\bbook\b|magazine|conclave|summit|workshop|seminar|celebration|samaroh|mahotsav|\bweek\b|\bdivas\b|\bday\b celebrat|office|bhavan|\bbuilding\b|centre of excellence|center of excellence|training (centre|center|programme|program)|statue|museum|\bpark\b(?! project)|gallery|\bbus(es)? fleet\b|\bbus service\b|train service|\bcoach\b|\brally\b|\byatra\b|marathon|\brun\b for|\brooftop\b(?![^.]{0,40}\d+\s*[mg]w)|(scheme|yojana|policy|programme|program) (launch|inaugurat)/i;
+var PFC_CEREMONY_FLUFF_RE = /exhibition|\bexpo\b|\bmela\b|awareness|campaign|portal|website|\bapp\b|mobile application|logo|\bbook\b|magazine|conclave|summit|workshop|seminar|celebration|samaroh|mahotsav|\bweek\b|\bdivas\b|\bday\b celebrat|office|bhavan|\bbuilding\b|centre of excellence|center of excellence|training (centre|center|programme|program)|statue|museum|\bpark\b(?! project)|gallery|\bbus(es)? fleet\b|\bbus service\b|train service|\bcoach\b|\brally\b|\byatra\b|marathon|\brun\b for|(scheme|yojana|policy|programme|program) (launch|inaugurat)/i;
 
 var PFC_CRIME_BLOTTER_RE = /\bcrime (file|files|branch|news|report|diary)\b|\bmurder(ed|s)?\b|\bmurder case\b|\brape[sd]?\b|\bmolest|\bkidnap|\babduct|\bassault(ed)?\b|\bstabb(ed|ing)|\bshot dead\b|\bloot(ed)?\b|\bchain snatch|\bburglar|\bpickpocket|\bhit[- ]and[- ]run\b|road accident|\bmishap\b|\bdrowned?\b|\bsuicide\b|\bmissing (girl|boy|woman|man|child)\b|\bmob\b|\briot|\bdacoity\b|\beve[- ]teas/i;
 
@@ -3021,7 +3021,8 @@ function classifyLocal_(item) {
     var _cm = lower.match(/(\d[\d,.]*)\s*(gw|mw)\b/);
     var _mw = _cm ? parseFloat(_cm[1].replace(/,/g, '')) * (_cm[2] === 'gw' ? 1000 : 1) : 0;
     var _big = (_ca.crore || 0) >= 100 || _mw >= 100 || /\bpfc\b|power finance|\brec\b (limited|ltd)/.test(lower);
-    if (!_big && PFC_CEREMONY_FLUFF_RE.test(lower)) return pfcIgnore_();
+    var _fluff = PFC_CEREMONY_FLUFF_RE.test(lower) || (/\brooftop\b/.test(lower) && !_cm);   // rooftop w/o any MW/GW = event, not project
+    if (!_big && _fluff) return pfcIgnore_();
     // otherwise fall through: project inaugurations of any size route normally
   }
   if (PFC_CRIME_NOISE_RE.test(lower)) return pfcIgnore_();                             // v10.9: ordinary crime reporting
