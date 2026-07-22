@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * PFC NEWS RADAR DASHBOARD (PFC-NRD) — v10.9
+ * PFC NEWS RADAR DASHBOARD (PFC-NRD) — v11.1
  * ============================================================================
  * One Apps Script, one sheet, one pipeline, SIX registers:
  *
@@ -153,7 +153,7 @@
  *   4. If a run ever times out: Manual steps → step0_Version, then step1..step5.
  */
 
-var PFC_VERSION = 'PFC News Radar Dashboard (PFC-NRD) v10.9';
+var PFC_VERSION = 'PFC News Radar Dashboard (PFC-NRD) v11.1';
 
 /* ==========================================================================
  * >>> START HERE <<<  —  runEverything()
@@ -1997,9 +1997,14 @@ var PFC_CRIME_NOISE_RE = /crime file|police (file|complaint|station|arrest)|\bfi
  *  accidents and court reporting of ordinary crime carry no lending signal.
  *  Economic offences against a borrower stay in Borrower Watch via the fraud
  *  and NCLT rules, which run before this gate. */
+/** v11.1 - Ceremonial coverage. Inaugurations, foundation stones and flag-offs
+ *  are event reporting; they matter only when something material rides along -
+ *  a real amount, real capacity, or PFC/REC itself. */
+var PFC_CEREMONY_RE = /\binaugurat|foundation stone|bhoomi ?pujan|flags? off|flagged off|dedicat(e[sd]?|ion)s?\b[^.]{0,60}to the nation|lays? (the )?foundation/i;
+
 var PFC_CRIME_BLOTTER_RE = /\bcrime (file|files|branch|news|report|diary)\b|\bmurder(ed|s)?\b|\bmurder case\b|\brape[sd]?\b|\bmolest|\bkidnap|\babduct|\bassault(ed)?\b|\bstabb(ed|ing)|\bshot dead\b|\bloot(ed)?\b|\bchain snatch|\bburglar|\bpickpocket|\bhit[- ]and[- ]run\b|road accident|\bmishap\b|\bdrowned?\b|\bsuicide\b|\bmissing (girl|boy|woman|man|child)\b|\bmob\b|\briot|\bdacoity\b|\beve[- ]teas/i;
 
-var PFC_RETAIL_INVEST_RE = /sovereign gold bond|\bsgbs?\b|gold bonds?\b|gold (etf|scheme|price|rate)|silver (etf|price)|\brbi retail direct\b|retail direct (scheme|platform)|premature redemption|redemption price[^.]{0,20}(sgb|gold)|\bnps\b (scheme|return)|mutual fund/i;
+var PFC_RETAIL_INVEST_RE = /sovereign gold bond|\bsgbs?\b|gold bonds?\b|gold (etf|scheme|price|rate)|silver (etf|price)|\brbi retail direct\b|retail direct (scheme|platform)|premature redemption|redemption price[^.]{0,20}(sgb|gold)|\bnps\b (scheme|return)|mutual fund|index fund|\b(regular|direct)[- ](growth|plan)\b|\bnfo\b|new fund offer|\bidcw\b|nifty ?\d+|\bsensex\b|momentum \d+|gilt fund|debt fund|liquid fund|hybrid fund|arbitrage fund|\belss\b|(flexi|multi|small|mid|large)[- ]?cap fund/i;
 
 var PFC_RETAIL_DEPOSIT_RE = /\b(fixed|term|recurring) deposits?\b|\bfds?\b[^.]{0,20}(rate|interest|return)|\b(fd|rd) (rates?|interest)|senior citizens?[^.]{0,30}(fd|deposit|rate|scheme|saving)|savings? (account|bank) (interest|rate)|\bppf\b|\bnsc\b|\bkvp\b|sukanya|post office (scheme|deposit|saving)|small savings? (scheme|rate)|highest (interest|fd) rate|best (fd|deposit) rate|which bank (offers|gives)/i;
 
@@ -3006,6 +3011,12 @@ function classifyLocal_(item) {
   if (PFC_RETAIL_DEPOSIT_RE.test(lower)) return pfcIgnore_();                          // v10.7: retail deposit products
   if (PFC_RETAIL_INVEST_RE.test(lower)) return pfcIgnore_();                           // v10.8: SGB / retail investment products
   if (PFC_CRIME_BLOTTER_RE.test(lower) && !/\bnclt\b|insolven|wil+ful default|sarfaesi|\bfraud\b|forensic|\bed\b |enforcement directorate|money launder/.test(lower)) return pfcIgnore_();   // v10.9: crime blotter
+  if (PFC_CEREMONY_RE.test(lower)) {                                                   // v11.1: ceremony needs substance
+    var _ca = pfcExtractAmount_(text);
+    var _cm = lower.match(/(\d[\d,.]*)\s*(gw|mw)\b/);
+    var _mw = _cm ? parseFloat(_cm[1].replace(/,/g, '')) * (_cm[2] === 'gw' ? 1000 : 1) : 0;
+    if (!((_ca.crore || 0) >= 100 || _mw >= 100 || /\bpfc\b|power finance|\brec\b (limited|ltd)/.test(lower))) return pfcIgnore_();
+  }
   if (PFC_CRIME_NOISE_RE.test(lower)) return pfcIgnore_();                             // v10.9: ordinary crime reporting
   if (pfcNonLatinHeadline_(item.title)) return pfcIgnore_();                           // v10.7: regional-language repost
   if (PFC_AIRLINE_OPS_RE.test(lower) && !PFC_AIRPORT_PROJECT_RE.test(lower)) return pfcIgnore_();   // v9.8: airline ops
@@ -4087,10 +4098,23 @@ function buildApiPayload_(days, includeRaw, limit) {
     return !Number.isFinite(t) || t >= since;
   }
 
+  function kw3_() {
+    var out = [];
+    for (var i = 0; i < arguments.length && out.length < 3; i++) {
+      var v = String(arguments[i] || '').trim();
+      if (!v || v === '-') continue;
+      var dup = false;
+      for (var j = 0; j < out.length; j++) if (out[j].toLowerCase() === v.toLowerCase()) dup = true;
+      if (!dup) out.push(v);
+    }
+    return out;
+  }
+
   rowsOf(CFG.SHEETS.BUS).forEach(function (r) {
     if (!inWindow(r[0])) return;
     items.push({ r: 'BUSINESS', i: String(r[1] || 'Low'), d: dstr(r[0]), t: String(r[12] || ''),
       l: String(r[11] || ''), s: srcOf(r[11]), f: '',
+      kw: kw3_(r[3], r[4], r[8]),
       x: { sec: String(r[3] || ''), st: String(r[4] || ''), cr: num(r[5]), exp: num(r[6]),
            why: String(r[7] || ''), prod: String(r[8] || '') } });
   });
@@ -4098,6 +4122,7 @@ function buildApiPayload_(days, includeRaw, limit) {
     if (!inWindow(r[0])) return;
     items.push({ r: 'WATCH', i: String(r[1] || 'Low'), d: dstr(r[0]), t: String(r[10] || ''),
       l: String(r[9] || ''), s: srcOf(r[9]), f: '',
+      kw: kw3_(r[2], r[3]),
       x: { bor: String(r[2] || ''), sub: String(r[3] || ''), cls: String(r[4] || ''),
            cr: num(r[6]), why: String(r[7] || '') } });
   });
@@ -4105,6 +4130,7 @@ function buildApiPayload_(days, includeRaw, limit) {
     if (!inWindow(r[0])) return;
     items.push({ r: 'BORROWING', i: String(r[1] || 'Low'), d: dstr(r[0]), t: String(r[13] || ''),
       l: String(r[12] || ''), s: srcOf(r[12]), f: '',
+      kw: kw3_(r[2], r[4]),
       x: { src: String(r[2] || ''), icls: String(r[3] || ''), inst: String(r[4] || ''),
            amt: String(r[5] || ''), cr: num(r[6]), ten: String(r[8] || ''),
            cpn: String(r[9] || ''), ben: String(r[10] || '') } });
@@ -4113,6 +4139,7 @@ function buildApiPayload_(days, includeRaw, limit) {
     if (!inWindow(r[0])) return;
     items.push({ r: 'TREASURY', i: String(r[1] || 'Low'), d: dstr(r[0]), t: String(r[12] || ''),
       l: String(r[11] || ''), s: srcOf(r[11]), f: '',
+      kw: kw3_(r[2]),
       x: { th: String(r[2] || ''), rt: String(r[5] || ''), inr: String(r[6] || ''),
            imp: String(r[7] || ''), hed: String(r[8] || '') } });
   });
@@ -4120,6 +4147,7 @@ function buildApiPayload_(days, includeRaw, limit) {
     if (!inWindow(r[0])) return;
     items.push({ r: 'COMPETITOR', i: String(r[1] || 'Low'), d: dstr(r[0]), t: String(r[10] || ''),
       l: String(r[9] || ''), s: srcOf(r[9]), f: '',
+      kw: kw3_(r[2], r[3]),
       x: { comp: String(r[2] || ''), act: String(r[3] || ''), det: String(r[4] || ''),
            cr: num(r[5]), terms: String(r[6] || ''), why: String(r[7] || '') } });
   });
@@ -4127,6 +4155,7 @@ function buildApiPayload_(days, includeRaw, limit) {
     if (!inWindow(r[0])) return;
     items.push({ r: 'REGULATORY', i: String(r[1] || 'Low'), d: dstr(r[0]), t: String(r[11] || ''),
       l: String(r[10] || ''), s: srcOf(r[10]), f: '',
+      kw: kw3_(r[2], r[5]),
       x: { reg: String(r[2] || ''), inst: String(r[3] || ''), appl: String(r[4] || ''),
            th: String(r[5] || ''), chg: String(r[6] || ''), impl: String(r[7] || ''),
            owner: String(r[8] || ''), due: String(r[9] || '') } });
