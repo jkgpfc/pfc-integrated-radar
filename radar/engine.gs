@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * PFC NEWS RADAR DASHBOARD (PFC-NRD) — v11.2
+ * PFC NEWS RADAR DASHBOARD (PFC-NRD) — v11.3
  * ============================================================================
  * One Apps Script, one sheet, one pipeline, SIX registers:
  *
@@ -153,7 +153,7 @@
  *   4. If a run ever times out: Manual steps → step0_Version, then step1..step5.
  */
 
-var PFC_VERSION = 'PFC News Radar Dashboard (PFC-NRD) v11.2';
+var PFC_VERSION = 'PFC News Radar Dashboard (PFC-NRD) v11.3';
 
 /* ==========================================================================
  * >>> START HERE <<<  —  runEverything()
@@ -2009,6 +2009,12 @@ var PFC_CEREMONY_FLUFF_RE = /exhibition|\bexpo\b|\bmela\b|awareness|campaign|por
 
 var PFC_CRIME_BLOTTER_RE = /\bcrime (file|files|branch|news|report|diary)\b|\bmurder(ed|s)?\b|\bmurder case\b|\brape[sd]?\b|\bmolest|\bkidnap|\babduct|\bassault(ed)?\b|\bstabb(ed|ing)|\bshot dead\b|\bloot(ed)?\b|\bchain snatch|\bburglar|\bpickpocket|\bhit[- ]and[- ]run\b|road accident|\bmishap\b|\bdrowned?\b|\bsuicide\b|\bmissing (girl|boy|woman|man|child)\b|\bmob\b|\briot|\bdacoity\b|\beve[- ]teas/i;
 
+/** v11.3 - RESIDENTIAL REAL ESTATE. Developers' pre-sales, booking values,
+ *  launch pipelines, housing and apartment projects are outside PFC's lending
+ *  universe. Kept only when genuine power/energy context rides along - a
+ *  developer's captive solar plant or a data-centre power tie-up still matters. */
+var PFC_RESI_REALTY_RE = /\brealty\b|real[- ]estate|\bhousing (project|society|sales|finance|demand|market|segment|launch)|residential (project|propert|sales|segment|launch|market|demand|realty|space)|\bapartments?\b|\bflats?\b|\bvillas?\b|plotted development|home ?buyers?\b|\bpre[- ]?sales\b|booking (value|volume)s?\b|\brera\b|luxury hom|\bsq[ .]?ft\b|per square (foot|feet)|property (price|market|sales|registrat)/i;
+
 var PFC_RETAIL_INVEST_RE = /sovereign gold bond|\bsgbs?\b|gold bonds?\b|gold (etf|scheme|price|rate)|silver (etf|price)|\brbi retail direct\b|retail direct (scheme|platform)|premature redemption|redemption price[^.]{0,20}(sgb|gold)|\bnps\b (scheme|return)|mutual fund|index fund|\b(regular|direct)[- ](growth|plan)\b|\bnfo\b|new fund offer|\bidcw\b|nifty ?\d+|\bsensex\b|momentum \d+|gilt fund|debt fund|liquid fund|hybrid fund|arbitrage fund|\belss\b|(flexi|multi|small|mid|large)[- ]?cap fund/i;
 
 var PFC_RETAIL_DEPOSIT_RE = /\b(fixed|term|recurring) deposits?\b|\bfds?\b[^.]{0,20}(rate|interest|return)|\b(fd|rd) (rates?|interest)|senior citizens?[^.]{0,30}(fd|deposit|rate|scheme|saving)|savings? (account|bank) (interest|rate)|\bppf\b|\bnsc\b|\bkvp\b|sukanya|post office (scheme|deposit|saving)|small savings? (scheme|rate)|highest (interest|fd) rate|best (fd|deposit) rate|which bank (offers|gives)/i;
@@ -3015,6 +3021,8 @@ function classifyLocal_(item) {
   if (PFC_NON_LENDING_PROC_RE.test(lower)) return pfcIgnore_();                        // v9.8: ordinary procurement
   if (PFC_RETAIL_DEPOSIT_RE.test(lower)) return pfcIgnore_();                          // v10.7: retail deposit products
   if (PFC_RETAIL_INVEST_RE.test(lower)) return pfcIgnore_();                           // v10.8: SGB / retail investment products
+  if (PFC_RESI_REALTY_RE.test(lower) &&                                                // v11.3: residential real estate
+      !/\bpower\b|electricity|\bsolar\b|\bwind\b|transmission|discom|\bdisco?ms?\b|\bmwh?\b|\bgwh?\b|energy|\bpfc\b|power finance|\brec\b (limited|ltd)|data cent(re|er)|\bev\b charging|rooftop/.test(lower)) return pfcIgnore_();
   if (PFC_CRIME_BLOTTER_RE.test(lower) && !/\bnclt\b|insolven|wil+ful default|sarfaesi|\bfraud\b|forensic|\bed\b |enforcement directorate|money launder/.test(lower)) return pfcIgnore_();   // v10.9: crime blotter
   if (PFC_CEREMONY_RE.test(lower)) {                                                   // v11.2: drop ceremonial fluff only
     var _ca = pfcExtractAmount_(text);
