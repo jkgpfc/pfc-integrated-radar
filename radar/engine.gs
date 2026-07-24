@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * PFC NEWS RADAR DASHBOARD (PFC-NRD) — v11.3
+ * PFC NEWS RADAR DASHBOARD (PFC-NRD) — v11.4
  * ============================================================================
  * One Apps Script, one sheet, one pipeline, SIX registers:
  *
@@ -153,7 +153,7 @@
  *   4. If a run ever times out: Manual steps → step0_Version, then step1..step5.
  */
 
-var PFC_VERSION = 'PFC News Radar Dashboard (PFC-NRD) v11.3';
+var PFC_VERSION = 'PFC News Radar Dashboard (PFC-NRD) v11.4';
 
 /* ==========================================================================
  * >>> START HERE <<<  —  runEverything()
@@ -629,6 +629,10 @@ function treasuryFeeds_() {
     { tag: 'T-India Prices',   url: gnews_('India CPI inflation OR WPI inflation data when:7d') },
     { tag: 'T-India Macro',    url: gnews_('India GDP growth OR fiscal deficit OR current account deficit when:7d') },
     { tag: 'T-Global Macro',   url: gnews_('US inflation OR recession risk OR global growth outlook when:7d') },
+    { tag: 'T-Tariffs',        url: gnews_('US tariffs India OR reciprocal tariff OR import duty OR trade deal when:7d') },
+    { tag: 'T-Trade Policy',   url: gnews_('trade war OR export controls OR WTO dispute OR anti-dumping duty India when:7d') },
+    { tag: 'T-Geopolitics',    url: gnews_('geopolitical risk markets OR sanctions oil OR conflict crude supply when:7d') },
+    { tag: 'T-Crude',          url: gnews_('crude oil price Brent OR OPEC output OR India oil import bill when:7d') },
     { tag: 'T-Corp Bonds',     url: gnews_('corporate bond spread OR yield curve India AAA NBFC when:7d') },
     { tag: 'T-Hedging',        url: gnews_('currency swap OR interest rate swap OR forward premium OR hedging cost India when:7d') },
     { tag: 'T-MoF/Budget',     url: gnews_('ministry of finance OR union budget borrowing OR disinvestment when:7d') },
@@ -2096,6 +2100,9 @@ function pfcForeignNoise_(lower) {
   if (!PFC_FOREIGN_GEO_RE.test(lower)) return false;
   if (pfcIndiaNexus_(lower)) return false;
   if (PFC_SYSTEMIC_RE.test(lower)) return false;   // Fed/ECB/BoJ/BoE/China/oil move PFC's cost of funds
+  // v11.4 - so do trade tariffs and market-moving geopolitics
+  if (PFC_TRADE_TARIFF_RE.test(lower) && !PFC_POWER_TARIFF_RE.test(lower)) return false;
+  if (PFC_GEOPOL_RE.test(lower) && PFC_GEOPOL_MARKET_RE.test(lower)) return false;
   if (pfcLiquiditySignal_(lower)) return false;
   if (PFC_MDB_RE.test(lower) && !PFC_FOREIGN_GEO_RE.test(lower)) return false;   // v8.4: global MDB window, no foreign borrower
   return true;
@@ -2519,11 +2526,31 @@ function pfcWatchHit_(lower, title, text) {
 }
 
 /** TREASURY — market theme / rates / FX. */
+/** v11.4 - TRADE TARIFFS. "Tariff" is the single most dangerous word in this
+ *  system: in Indian power news it almost always means the ELECTRICITY tariff
+ *  (CERC orders, discom revisions, ARR true-ups), which belongs to Regulators or
+ *  Business. A trade tariff therefore needs explicit trade context, and anything
+ *  carrying power-tariff language is refused outright. */
+var PFC_POWER_TARIFF_RE = /electricity tariff|power tariff|retail tariff|tariff (order|petition|revision|hike|true[- ]?up|determination|regulation|schedule|plan)|\barr\b|aggregate revenue requirement|discom|\bcerc\b|\bserc\b|open access charge|wheeling charge|\bppa\b|feed[- ]in tariff/i;
+
+var PFC_TRADE_TARIFF_RE = /\b(reciprocal|retaliatory|punitive|import|export|customs|anti[- ]dumping|countervailing|safeguard)\s+(tariffs?|duty|duties)|\btariffs?\b[^.]{0,45}(u\.?s\.?\b|americ|washington|chin(a|ese)|europe|\beu\b|imports?\b|exports?\b|trade|\bwto\b)|(u\.?s\.?\b|americ|washington|chin(a|ese)|europe|\beu\b)[^.]{0,45}\btariffs?\b|trade (war|deal|pact|agreement|talks|tension|barrier)|section 301|\bwto\b|export controls?|import curbs?|\bbcd\b hike|basic customs duty/i;
+
+/** v11.4 - GEOPOLITICS. Relevant to Treasury through crude, commodities, supply
+ *  chains and risk appetite - not as war reporting. A geopolitical event counts
+ *  only when it carries a market, commodity or India angle. */
+var PFC_GEOPOL_RE = /geopolit|\bsanctions?\b|\bwar\b|warfare|conflict|invasion|airstrike|missile|drone attack|blockade|strait of hormuz|red sea|suez|middle east|israel|\biran\b|russia|ukraine|\bopec\b|\bopec\+|rare earth|chip war|semiconductor curbs?|supply[- ]chain disruption|escalation|ceasefire|\bnato\b|taiwan strait|south china sea/i;
+
+var PFC_GEOPOL_MARKET_RE = /crude|\boil\b|\bbrent\b|\bwti\b|\blng\b|natural gas|commodit|\bgold\b|\bdollar\b|rupee|currency|\bforex\b|inflation|\byields?\b|bond|equit|market|investor|risk (appetite|aversion|premium)|safe[- ]haven|supply|import|export|trade|freight|shipping|energy (price|security|import)|fuel (price|import)/i;
+
 function pfcMarketTheme_(lower, tag) {
   if (PFC_EDITORIAL_RE.test(lower) &&
       /econom|inflation|growth|\bgdp\b|rate|rupee|fiscal|deficit|budget|\brbi\b|monetary|reform|bond|market/.test(lower)) {
     return 'Economist / Editorial';                            // v8.0 sub-filter
   }
+  // v11.4 - trade tariffs, but never an electricity-tariff story
+  if (PFC_TRADE_TARIFF_RE.test(lower) && !PFC_POWER_TARIFF_RE.test(lower)) return 'Trade & Tariffs';
+  // v11.4 - geopolitics, only with a market/commodity/India angle
+  if (PFC_GEOPOL_RE.test(lower) && (PFC_GEOPOL_MARKET_RE.test(lower) || pfcIndiaNexus_(lower))) return 'Geopolitics / Commodities';
   if (/\bsofr\b|\beuribor\b|benchmark rate transition/.test(lower)) return 'Global FX';
   if (/\brepo rate\b|monetary policy|\bmpc\b|rbi policy|\bslr\b|policy stance/.test(lower)) return 'RBI Policy';
   if (/\bg[- ]?secs?\b|government bond|10[- ]?year yield|\bgilts?\b|treasury bill|\bt[- ]?bills?\b|borrowing calendar|sovereign bond yield/.test(lower)) return 'G-Sec / Govt Borrowing';
@@ -2542,8 +2569,12 @@ function pfcMarketTheme_(lower, tag) {
   // rates, currency, macro, government borrowing or a rating action. Otherwise a
   // solar tender or a rail accident pulled by a Treasury feed would masquerade as
   // Treasury. Those fall through to Business / Ignore below.
+  // v11.4 - a geopolitical item with no market, commodity or India angle is war
+  // reporting, not Treasury. Block it before the tag-based fallback below.
+  if (PFC_GEOPOL_RE.test(lower) && !PFC_GEOPOL_MARKET_RE.test(lower) && !pfcIndiaNexus_(lower) &&
+      !PFC_TRADE_TARIFF_RE.test(lower)) return null;
   if (/^T-/.test(tag) &&
-      /\brates?\b|\byield|repo|\bmpc\b|inflation|\bcpi\b|\bwpi\b|\bgdp\b|fiscal|deficit|rupee|\bforex\b|currency|\bfed\b|\brbi\b|bond|\bg[- ]?sec|monetary|liquidity|sovereign|budget|borrowing cost|basis points?|\bbps\b/.test(lower)) {
+      /\brates?\b|\byield|repo|\bmpc\b|inflation|\bcpi\b|\bwpi\b|\bgdp\b|fiscal|deficit|rupee|\bforex\b|currency|\bfed\b|\brbi\b|bond|\bg[- ]?sec|monetary|liquidity|sovereign|budget|borrowing cost|basis points?|\bbps\b|tariffs?|trade (war|deal|talks)|geopolit|sanctions?|crude|\bopec\b|commodit/.test(lower)) {
     return String(tag).replace(/^T-/, '');
   }
   return null;
