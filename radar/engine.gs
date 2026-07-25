@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * PFC NEWS RADAR DASHBOARD (PFC-NRD) — v11.5
+ * PFC NEWS RADAR DASHBOARD (PFC-NRD) — v11.6
  * ============================================================================
  * One Apps Script, one sheet, one pipeline, SIX registers:
  *
@@ -153,7 +153,7 @@
  *   4. If a run ever times out: Manual steps → step0_Version, then step1..step5.
  */
 
-var PFC_VERSION = 'PFC News Radar Dashboard (PFC-NRD) v11.5';
+var PFC_VERSION = 'PFC News Radar Dashboard (PFC-NRD) v11.6';
 
 /* ==========================================================================
  * >>> START HERE <<<  —  runEverything()
@@ -2084,7 +2084,7 @@ var PFC_SHARE_PRICE_RE = /52[- ]week (high|low)|shares? (hit|surge|jump|rall(y|i
 
 var PFC_MF_RE = /mutual fund|\bnav\b|\bamc\b(?! infra)|\bsip\b (inflow|book|contribution)|\belss\b|debt schemes?|equity schemes?|\bfolio\b|new fund offer|\bnfo\b/i;
 
-var PFC_NON_INFRA_RE = /\bpaper[s]?\b|textile|apparel|garment|\bfmcg\b|dairy|\bsugar\b|distiller|brewer|hotel|hospitality|jewell?er|\bretail\b|e[- ]?commerce|fashion|footwear|\btyre\b|pharma|biotech|hospital\b|diagnostic|\bit services\b|software|\bbpo\b|media|entertainment|gaming|real estate developer|\bmall\b/i;
+var PFC_NON_INFRA_RE = /(?<!commercial )\bpaper[s]?\b(?!\s*(?:issuance|market|maturit|programme|program|rollover|at \d))|textile|apparel|garment|\bfmcg\b|dairy|\bsugar\b|distiller|brewer|hotel|hospitality|jewell?er|\bretail\b|e[- ]?commerce|fashion|footwear|\btyre\b|pharma|biotech|hospital\b|diagnostic|\bit services\b|software|\bbpo\b|media|entertainment|gaming|real estate developer|\bmall\b/i;
 
 var PFC_INVEST_ADVICE_RE = /\b\d+ best\b|best .{0,30}invest|inflation[- ]proof|recession[- ]proof|investment (ideas|options|plans|strategies)|where to (invest|park)|safe havens?|how to (invest|grow|build wealth)|wealth creation|portfolio (tips|ideas)|retirement (planning|corpus)|\bsip\b (calculator|returns)|fixed deposits? vs|gold vs/i;
 
