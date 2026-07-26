@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * PFC NEWS RADAR DASHBOARD (PFC-NRD) — v11.7
+ * PFC NEWS RADAR DASHBOARD (PFC-NRD) — v11.8
  * ============================================================================
  * One Apps Script, one sheet, one pipeline, SIX registers:
  *
@@ -153,7 +153,7 @@
  *   4. If a run ever times out: Manual steps → step0_Version, then step1..step5.
  */
 
-var PFC_VERSION = 'PFC News Radar Dashboard (PFC-NRD) v11.7';
+var PFC_VERSION = 'PFC News Radar Dashboard (PFC-NRD) v11.8';
 
 /* ==========================================================================
  * >>> START HERE <<<  —  runEverything()
@@ -2456,7 +2456,7 @@ function pfcFundingPrint_(lower, title, text) {
  *  high/low liquidity of funds directly drives PFC issuance timing). */
 function pfcLiquiditySignal_(lower) {
   // Unambiguous phrases stand on their own.
-  if (/open market operation|liquidity (surplus|deficit|injection|absorption)|banking system liquidity|durable liquidity|\bcrr\b (cut|hike|change)|cash reserve ratio/.test(lower)) return true;
+  if (/open market operation|liquidity (surplus|deficit|injection|absorption|inject|infus|drain|tighten|eas)|banking system|durable liquidity|overnight (call )?rate|weighted average call rate|\bwacr\b|\bcrr\b (cut|hike|change)|cash reserve ratio|standing deposit facility|marginal standing facility/.test(lower)) return true;
   // Bare acronyms (VRR/VRRR/OMO) are three letters that turn up in ordinary
   // words and song titles alike, so they count only with money-market context.
   if (/\bvrr\b|\bvrrr\b|\bomo\b/.test(lower)) {
@@ -3131,8 +3131,8 @@ function classifyLocal_(item) {
   var radar = forced;
   if (!radar) {
     if (w) radar = 'WATCH';
-    else if (pfcFundingPrint_(lower, title, text) || PFC_AAA_BOND_RE.test(lower)) radar = 'BORROWING';
     else if (pfcLiquiditySignal_(lower)) radar = 'TREASURY';
+    else if (pfcFundingPrint_(lower, title, text) || PFC_AAA_BOND_RE.test(lower)) radar = 'BORROWING';
     else {
       var km = kmMatch_(lower);
       var mkt = pfcMarketTheme_(lower, tag);
@@ -3150,9 +3150,9 @@ function classifyLocal_(item) {
 
   /* 5) build the hit */
   if (radar === 'BORROWING') {
-    var hit = pfcLiquiditySignal_(lower)
-      ? buildLiquidityBorrowingHit_(lower, title, text)
-      : pfcFundingPrint_(lower, title, text);
+    // v11.8: liquidity/money-market items live in Treasury now, so the Borrowing
+    // builder never uses the liquidity branch - it only describes funding prints.
+    var hit = pfcFundingPrint_(lower, title, text);
     if (!hit && PFC_AAA_BOND_RE.test(lower)) {
       var amt = pfcExtractAmount_(text);
       hit = { source: pfcEntity_(title), instrument: 'AAA corporate bond', amount: amt.raw || 'Not stated',
