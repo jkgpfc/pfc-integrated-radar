@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * PFC NEWS RADAR DASHBOARD (PFC-NRD) — v11.6
+ * PFC NEWS RADAR DASHBOARD (PFC-NRD) — v11.7
  * ============================================================================
  * One Apps Script, one sheet, one pipeline, SIX registers:
  *
@@ -153,7 +153,7 @@
  *   4. If a run ever times out: Manual steps → step0_Version, then step1..step5.
  */
 
-var PFC_VERSION = 'PFC News Radar Dashboard (PFC-NRD) v11.6';
+var PFC_VERSION = 'PFC News Radar Dashboard (PFC-NRD) v11.7';
 
 /* ==========================================================================
  * >>> START HERE <<<  —  runEverything()
@@ -2554,6 +2554,7 @@ function pfcMarketTheme_(lower, tag) {
   if (PFC_TRADE_TARIFF_RE.test(lower) && !PFC_POWER_TARIFF_RE.test(lower)) return 'Trade & Tariffs';
   // v11.4 - geopolitics, only with a market/commodity/India angle
   if (PFC_GEOPOL_RE.test(lower) && (PFC_GEOPOL_MARKET_RE.test(lower) || pfcIndiaNexus_(lower))) return 'Geopolitics / Commodities';
+  if (pfcLiquiditySignal_(lower)) return 'Liquidity / Money Market';
   if (/\bsofr\b|\beuribor\b|benchmark rate transition/.test(lower)) return 'Global FX';
   if (/\brepo rate\b|monetary policy|\bmpc\b|rbi policy|\bslr\b|policy stance/.test(lower)) return 'RBI Policy';
   if (/\bg[- ]?secs?\b|government bond|10[- ]?year yield|\bgilts?\b|treasury bill|\bt[- ]?bills?\b|borrowing calendar|sovereign bond yield/.test(lower)) return 'G-Sec / Govt Borrowing';
@@ -2850,6 +2851,7 @@ var PFC_REGULATORS = [
   ['MoP',            'CPSE / sponsor',/ministry of power|\bmop\b/i],
   ['MoF / DEA',      'CPSE / listed', /ministry of finance|\bmof\b|department of economic affairs|\bdea\b|dipam/i],
   ['MNRE',           'Power-sector',  /ministry of new and renewable|\bmnre\b/i],
+  ['SECI',           'Power-sector',  /solar energy corporation|\bseci\b/i],
   ['SIDBI',          'Refinance',     /\bsidbi\b/i],
   ['CERC',           'Power-sector',  /central electricity regulatory|\bcerc\b/i],
   ['SERC',           'Power-sector',  /state electricity regulatory|\bserc\b|\bmerc\b|\bkerc\b|\bderc\b|\buperc\b/i],
@@ -3129,8 +3131,8 @@ function classifyLocal_(item) {
   var radar = forced;
   if (!radar) {
     if (w) radar = 'WATCH';
-    else if (pfcLiquiditySignal_(lower)) radar = 'BORROWING';
     else if (pfcFundingPrint_(lower, title, text) || PFC_AAA_BOND_RE.test(lower)) radar = 'BORROWING';
+    else if (pfcLiquiditySignal_(lower)) radar = 'TREASURY';
     else {
       var km = kmMatch_(lower);
       var mkt = pfcMarketTheme_(lower, tag);
@@ -3172,7 +3174,7 @@ function classifyLocal_(item) {
     hit.issuer_class = pfcIssuerClass_(text) || (PFC_AAA_BOND_RE.test(lower) ? 'AAA corporate' : '');
     // v8.0: the Borrowing radar carries only PFC, competitors, top-10 banks,
     // large NBFCs, MDBs, RBI/liquidity and AAA corporate-bond pricing.
-    if (!forced && !hit.issuer_class && !pfcLiquiditySignal_(lower)) return pfcIgnore_();
+    if (!forced && !hit.issuer_class) return pfcIgnore_();
     // AAA corporate pricing rarely names India in the headline; admit it unless
     // the story is explicitly foreign (the foreign gate already ran).
     var aaaPass = hit.issuer_class === 'AAA corporate' && !PFC_FOREIGN_GEO_RE.test(lower);
