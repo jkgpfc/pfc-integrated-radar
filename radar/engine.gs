@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * PFC NEWS RADAR DASHBOARD (PFC-NRD) — v11.9
+ * PFC NEWS RADAR DASHBOARD (PFC-NRD) — v12.0
  * ============================================================================
  * One Apps Script, one sheet, one pipeline, SIX registers:
  *
@@ -153,7 +153,7 @@
  *   4. If a run ever times out: Manual steps → step0_Version, then step1..step5.
  */
 
-var PFC_VERSION = 'PFC News Radar Dashboard (PFC-NRD) v11.9';
+var PFC_VERSION = 'PFC News Radar Dashboard (PFC-NRD) v12.0';
 
 /* ==========================================================================
  * >>> START HERE <<<  —  runEverything()
@@ -3046,7 +3046,18 @@ function pfcBorrowerFundingHit_(lower, title, text) {
  *           bus|watch|borr|tre: hit object or null }
  * ========================================================================== */
 
+/** v12.0 - BLOCKED SOURCES. Outlets that reprint stale news with fresh dates, or
+ *  that carry no editorial newsroom (stock-tip mills, crypto feeds, data scrapers).
+ *  Matched against source name and link, so nothing from them enters any radar. */
+var PFC_BLOCKED_SOURCE_RE = /business ?upturn|businessupturn|\bwhalesbook\b|scanx|\bsahi\b|tradingview|cryptorank|crypto ?briefing|bitcoin ?world|coingape|coindesk|cointelegraph|ambcrypto|\bwatcher ?guru|\bzycrypto|\bbenzinga\b|\bstocktwits\b|\bmarketbeat|simply ?wall ?st|\btipranks\b|equitypandit|moneyworks4me|5paisa|angel ?one|groww|\bicicidirect|trade ?brains|\bstockgro|dalal ?street ?investment|goodreturns|indmoney/i;
+
+function pfcBlockedSource_(item) {
+  var s = String((item.source || '') + ' ' + (item.link || item.url || ''));
+  return PFC_BLOCKED_SOURCE_RE.test(s);
+}
+
 function classifyLocal_(item) {
+  if (pfcBlockedSource_(item)) return pfcIgnore_();   // v12.0: unreliable / no-newsroom outlet
   var title = String(item.title || '').trim();
   var snippet = String(item.snippet || '').trim();
   var tag = String(item.tag || '').trim();
