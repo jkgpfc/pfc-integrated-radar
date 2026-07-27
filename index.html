@@ -498,8 +498,18 @@ function scoreItem(it){
 }
 
 /* ---------- state ---------- */
-const RADARS=[["ALL","All Radars"],["BUSINESS","Business"],["WATCH","Borrowers"],["BORROWING","Borrowings"],["TREASURY","Treasury"],["COMPETITOR","Peers"],["REGULATORY","Regulators"]];
+const RADARS=[["ALL","All Radars"],["PFC","PFC in News"],["BUSINESS","Business"],["WATCH","Borrowers"],["BORROWING","Borrowings"],["TREASURY","Treasury"],["COMPETITOR","Peers"],["REGULATORY","Regulators"]];
 const RNAME=Object.fromEntries(RADARS.map(([k,v])=>[k,v.toUpperCase()]));
+/* v12.3 - "PFC in News" is a cross-register lens, not a seventh register: it
+   gathers every item naming PFC (Power Finance Corporation, or the bare acronym)
+   while each item stays in its home tab. Membership honours the engine's p:1 flag
+   (headline + snippet) when present, and otherwise falls back to a headline test so
+   the tab also works on data.json snapshots published before v12.3. Only the real
+   news text is scanned: the commentary fields (why / ben / impl) say "PFC" on almost
+   every card, and the keyword tags carry engine labels like "SEPC (PFC borrower
+   code)" that name a BORROWER rather than PFC - so both are deliberately excluded. */
+const PFC_SELF_RE=/power finance corporation|\bpfc\b/i;
+function isPfcNamed(it){ return it.p===1 || PFC_SELF_RE.test(it.t||""); }
 const IMP_RANK={High:0,Medium:1,Low:2};
 let items=[], generatedAt="", srcNote="";
 let radar="ALL", period=30, imps=new Set(["High","Medium","Low"]), page=1;   // sort default = newest (see sortBy)
@@ -810,7 +820,8 @@ function anchorLabel(){ return new Date(anchorDay()*864e5).toISOString().slice(0
 
 /* ---------- filters ---------- */
 function within(it){
-  if(radar!=="ALL"&&it.r!==radar)return false;
+  if(radar==="PFC"){ if(!isPfcNamed(it))return false; }        // cross-register: every PFC-named story
+  else if(radar!=="ALL"&&it.r!==radar)return false;
   if(!imps.has(it.i))return false;
   if(!inPeriod(it))return false;
   const q=document.getElementById('q').value.trim().toLowerCase();
@@ -838,7 +849,7 @@ function val(id){const e=document.getElementById(id);return e.value==="*"?"":e.v
      Treasury           -> Treasury Keywords
      Competitor         -> Activity (Borrowings vs Lending / Business)                            */
 const FILTER_MAP={BUSINESS:['fState','fSector'],WATCH:['fSub','fClass'],BORROWING:['fClass'],
-                  TREASURY:['fTheme'],COMPETITOR:['fSub'],REGULATORY:['fReg','fRegTheme'],ALL:[]};
+                  TREASURY:['fTheme'],COMPETITOR:['fSub'],REGULATORY:['fReg','fRegTheme'],PFC:[],ALL:[]};
 function uniq(pred,get){return [...new Set(items.filter(pred).map(get).filter(Boolean))].sort();}
 function buildFilters(){
   fill('fState',"All states",uniq(i=>i.r==="BUSINESS",i=>i.state));
@@ -888,7 +899,7 @@ function render(keepScroll){
   // radar strip counts respect period + importance chips (not radar itself)
   const strip=document.getElementById('strip');
   strip.innerHTML=RADARS.map(([r,name])=>{
-    const pool=items.filter(it=>(r==="ALL"||it.r===r)&&imps.has(it.i)&&inPeriod(it));
+    const pool=items.filter(it=>(r==="ALL"?true:r==="PFC"?isPfcNamed(it):it.r===r)&&imps.has(it.i)&&inPeriod(it));
     return '<button class="seg'+(radar===r?' active':'')+'" data-r="'+r+'" onclick="pickRadar(\''+r+'\')">'+
       '<h3>'+name+'</h3><div class="total">'+pool.length+'</div></button>';
   }).join('');
@@ -954,7 +965,8 @@ function render(keepScroll){
     return deskRank(a,b);   // default
   });
   const names=Object.fromEntries(RADARS);
-  document.getElementById('secTitle').textContent=names[radar];
+  document.getElementById('secTitle').innerHTML = esc(names[radar]) +
+    (radar==="PFC" ? ' <span style="font-family:system-ui;font-size:11px;font-weight:600;color:var(--muted)">&mdash; every story naming PFC, across all six registers (each card keeps its home-register tag)</span>' : '');
   document.getElementById('count').textContent=pool.length+" items · "+(period>0?"last "+period+" day"+(period>1?"s":"")+" to "+anchorLabel():"all dates");
   const slice=pool.slice(0,page*PAGE);
   document.getElementById('list').innerHTML=slice.map(card).join('');
