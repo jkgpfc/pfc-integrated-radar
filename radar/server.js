@@ -139,6 +139,33 @@ function keywordsFor(raw, r) {
 
 /* Google News honours after:/before: in the query. Swap the standing when:Nd
    for an explicit window so we can walk backwards through the quarter. */
+
+/* v12.1 - Resolve an article's REAL publish date. Google News RSS pubDate is the
+   re-syndication time, so a stale story looks fresh. We read the article's own
+   metadata (article:published_time, datePublished, og:updated_time, or a visible
+   byline) and use the OLDEST date found. Only called when the RSS text carries no
+   date of its own, so it costs one extra fetch on a minority of items. */
+async function resolveRealDate(link, timeoutMs) {
+  try {
+    const html = await fetchOne(link, timeoutMs);
+    if (!html) return null;
+    const pats = [
+      /<meta[^>]+property=["']article:published_time["'][^>]+content=["']([^"']+)["']/i,
+      /<meta[^>]+itemprop=["']datePublished["'][^>]+content=["']([^"']+)["']/i,
+      /["']datePublished["']\s*:\s*["']([^"']+)["']/i,
+      /<time[^>]+datetime=["']([^"']+)["']/i,
+      /<meta[^>]+property=["']og:updated_time["'][^>]+content=["']([^"']+)["']/i
+    ];
+    const found = [];
+    for (const p of pats) { const m = html.match(p); if (m) { const d = new Date(m[1]); if (!isNaN(d)) found.push(d); } }
+    // also scan visible text for a byline date via the engine's extractor
+    const viaText = ENGINE.pfcExtractOldestDate_ ? ENGINE.pfcExtractOldestDate_(html.slice(0, 4000)) : null;
+    if (viaText) found.push(viaText);
+    if (!found.length) return null;
+    return new Date(Math.min.apply(null, found.map(d => d.getTime())));
+  } catch (e) { return null; }
+}
+
 function windowedUrl(url, from, to) {
   return url
     .replace(/when(%3A|:)\d+[dhm]/i, '')
@@ -235,7 +262,20 @@ async function runCycle(testMode) {
           for (const it of parseRss(xml)) {
             if (!it.pubDate) continue;                                   // never fabricate a date
             if (it.pubDate < cutoff) continue;                            // honour the window
-            if (ENGINE.staleByText_(it.title + ' ' + it.snippet, cutoff)) continue;  // re-served old article
+            if (ENGINE.staleByText_(it.title + ' ' + it.snippet, cutoff)) continue;  // re-served old article (date in text)
+            // v12.1 - the RSS text had no date to check, yet pubDate can lie
+            // (Google re-syndication). If the item's own text carries no date,
+            // read the article's real publish date and reject if it predates the window.
+            const textDate = ENGINE.pfcExtractOldestDate_ ? ENGINE.pfcExtractOldestDate_(it.title + ' ' + it.snippet + ' ' + it.link) : null;
+            if (!textDate) {
+              const realDate = await resolveRealDate(it.link, 8000);
+              if (realDate && realDate < cutoff) continue;                 // genuinely old, re-dated by the feed
+              if (realDate) it.pubDate = realDate;                         // trust the article over the feed
+            } else if (textDate < cutoff) {
+              continue;                                                    // text itself says it's old
+            } else {
+              it.pubDate = textDate < it.pubDate ? textDate : it.pubDate;  // prefer the earlier true date
+            }
             it.tag = f.tag;
             rawItems.push(it);
           }
