@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * PFC NEWS RADAR DASHBOARD (PFC-NRD) — v12.0
+ * PFC NEWS RADAR DASHBOARD (PFC-NRD) — v12.1
  * ============================================================================
  * One Apps Script, one sheet, one pipeline, SIX registers:
  *
@@ -153,7 +153,7 @@
  *   4. If a run ever times out: Manual steps → step0_Version, then step1..step5.
  */
 
-var PFC_VERSION = 'PFC News Radar Dashboard (PFC-NRD) v12.0';
+var PFC_VERSION = 'PFC News Radar Dashboard (PFC-NRD) v12.1';
 
 /* ==========================================================================
  * >>> START HERE <<<  —  runEverything()
@@ -928,6 +928,27 @@ function fetchFeedsCore_(feedList, lookbackDays, maxPerFeed) {
 /** v9.0 — Google News sometimes re-serves months-old articles with a fresh RSS
  *  pubDate. If the title/snippet itself carries an explicit date older than the
  *  lookback window (e.g. "May 9, 2026"), the item is stale: reject it. */
+/** v12.1 - Extract the oldest real date mentioned anywhere in an item's text.
+ *  Google News RSS stamps pubDate with the re-syndication date, so a May article
+ *  re-served in July arrives looking fresh. The article's own byline/URL still
+ *  says May - this pulls that out so the fetch path can catch the mismatch. */
+function pfcExtractOldestDate_(text) {
+  var s = String(text || '');
+  var MON = 'jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t|tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?';
+  var dates = [], m;
+  var reA = new RegExp('\\b(' + MON + ')[a-z]*\\.?\\s+(\\d{1,2}),?\\s+(20\\d{2})\\b', 'ig');
+  while ((m = reA.exec(s))) { var d = new Date(m[1].slice(0,3)+' '+m[2]+', '+m[3]); if (!isNaN(d)) dates.push(d); }
+  var reB = new RegExp('\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+(' + MON + ')[a-z]*\\.?,?\\s+(20\\d{2})\\b', 'ig');
+  while ((m = reB.exec(s))) { var d2 = new Date(m[2].slice(0,3)+' '+m[1]+', '+m[3]); if (!isNaN(d2)) dates.push(d2); }
+  var reC = /\b(20\d{2})[-\/](\d{1,2})[-\/](\d{1,2})\b/g;
+  while ((m = reC.exec(s))) { var d3 = new Date(+m[1], +m[2]-1, +m[3]); if (!isNaN(d3)) dates.push(d3); }
+  // URL date path: /2026/05/09/ or /2026-05-09
+  var reU = /\/(20\d{2})[\/-](\d{1,2})[\/-](\d{1,2})[\/-]/g;
+  while ((m = reU.exec(s))) { var d4 = new Date(+m[1], +m[2]-1, +m[3]); if (!isNaN(d4)) dates.push(d4); }
+  if (!dates.length) return null;
+  return new Date(Math.min.apply(null, dates.map(function(d){return d.getTime();})));
+}
+
 function pfcStaleByText_(text, cutoff) {
   var s = String(text);
   var MON = 'jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t|tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?';
