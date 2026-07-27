@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * PFC NEWS RADAR DASHBOARD (PFC-NRD) — v11.8
+ * PFC NEWS RADAR DASHBOARD (PFC-NRD) — v11.9
  * ============================================================================
  * One Apps Script, one sheet, one pipeline, SIX registers:
  *
@@ -153,7 +153,7 @@
  *   4. If a run ever times out: Manual steps → step0_Version, then step1..step5.
  */
 
-var PFC_VERSION = 'PFC News Radar Dashboard (PFC-NRD) v11.8';
+var PFC_VERSION = 'PFC News Radar Dashboard (PFC-NRD) v11.9';
 
 /* ==========================================================================
  * >>> START HERE <<<  —  runEverything()
@@ -2092,6 +2092,13 @@ var PFC_EQUITY_RESEARCH_RE = /\(rating (downgrade|upgrade)\)|downgraded from (bu
 
 var PFC_STOCKTIP_SOFT_RE = /stocks? in focus|shares? in focus|stocks? in news|stock to watch|stocks? to track/i;
 var PFC_SUBSTANCE_RE = /\b\d[\d,.]*\s*(mw|gw)\b|crore|\bppa\b|\bmoa\b|\bmou\b|tender|financial closure|\bbonds?\b|\bloan\b|order (win|book)|contract worth/i;
+/** v11.9 - STALE-BY-CONTEXT. Google News sometimes re-serves an old article with
+ *  a fresh timestamp, so the date filter cannot catch it. These phrases describe a
+ *  transition that has already completed and would embarrass on a live dashboard:
+ *  interim/additional-charge appointments that are now permanent, and superseded
+ *  FY plans. Word-bounded and specific, so current news is untouched. */
+var PFC_STALE_CONTEXT_RE = /\bwith additional charge\b|\badditional charge\b|\binterim (cmd|chairman|chairperson|director|md)\b|\bacting (cmd|chairman|chairperson|md)\b|\bappoints?\b[^.]{0,40}\badditional charge\b|holds? additional charge/i;
+
 var PFC_STOCKTIP_RE = /(stocks?|shares?) to (buy|watch|sell|pick|track)|top \d+(\s+\w+){0,3}\s+(stocks?|shares?|picks?)|these \d+(\s+\w+){0,3}\s+stocks?|\d+ stocks? (to|that|for|are)|multibagger|target price|price target|buy or sell|intraday (picks?|calls?|trading)|brokerage (calls?|picks?|radar|view)|(buy|sell|hold|accumulate|reduce) (rating|call|recommendation)|(initiates?|maintains?|upgrades? to|downgrades? to) (buy|sell|hold|overweight|underweight)|stock (recommendation|pick|idea|tip)s?|technical picks?|hot stocks|penny stocks?|momentum picks?|stocks? (that|to) (gained|rallied|surged) |52[- ]week (high|low) stocks|shares? (of .{3,40})? (jump|surge|rall(y|ied)|gain|slip|fall|crash)(s|ed)? \d+(\.\d+)?%/i;
 
 /** True = clearly foreign story with no India nexus and no market relevance. */
@@ -3048,6 +3055,7 @@ function classifyLocal_(item) {
   var titleLower = title.toLowerCase();
 
   /* 0) NOISE GATES */
+  if (PFC_STALE_CONTEXT_RE.test(lower)) return pfcIgnore_();   // v11.9: re-dated old news (additional/interim charge)
   if (PFC_STOCKTIP_RE.test(lower) || PFC_STOCKTIP_RE_EXTRA.test(lower)) return pfcIgnore_();
   if (PFC_EQUITY_RESEARCH_RE.test(lower)) return pfcIgnore_();   // v8.3: brokerage/equity-research calls
   if (PFC_INVEST_ADVICE_RE.test(lower)) return pfcIgnore_();     // v9.0: personal-finance listicles
