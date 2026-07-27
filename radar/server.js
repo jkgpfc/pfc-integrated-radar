@@ -184,7 +184,7 @@ function dateWindows(days, stepDays) {
 
 function toPayloadItem(raw, r) {
   const d = raw.pubDate.toISOString().slice(0, 10);
-  const base = { i: r.importance || 'Low', d, t: raw.title, l: raw.link, s: raw.source || '', f: raw.tag || '', kw: keywordsFor(raw, r) };
+  const base = { i: r.importance || 'Low', d, t: raw.title, l: raw.link, s: raw.source || '', f: raw.tag || '', kw: keywordsFor(raw, r), pfc: r.pfc ? 1 : 0 };
   const out = [];
   if (r.radar === 'BUSINESS' && r.bus) {
     out.push({ r: 'BUSINESS', ...base, x: { cr: r.bus.size_cr || r.bus.exposure_cr || null, ben: r.bus.why || '' } });
@@ -318,7 +318,7 @@ async function runCycle(testMode) {
         if (rec.items[0].r !== r.radar) { rec.items[0].r = r.radar; rescored++; }
         // refresh the "why we picked this up" terms for the whole book
         const kw = keywordsFor({ tag: rec.items[0].f || '' }, r);
-        rec.items.forEach(it => { it.kw = kw; });
+        rec.items.forEach(it => { it.kw = kw; it.pfc = r.pfc ? 1 : 0; });
       }
     }
     store.__engine = stamp;
