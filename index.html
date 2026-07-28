@@ -8,14 +8,14 @@
 /* ============ TOKENS ============ */
 :root{
   --paper:#F6F4EE; --panel:#FFFFFF; --ink:#1B2430; --muted:#6B7280; --line:#DCD7CB;
-  --bus:#B8860B; --watch:#B94A43; --borr:#2E7D6F; --tre:#3F6FA3; --comp:#0F5C8C; --reg:#6A4A1F;
+  --bus:#B8860B; --watch:#B94A43; --borr:#2E7D6F; --tre:#3F6FA3; --comp:#0F5C8C; --reg:#6A4A1F; --pfc:#7A1FA2;
   --hi:#B3261E; --md:#9A6A00; --lo:#3D6B45;
   --hi-bg:#F8E3E1; --md-bg:#F6ECD4; --lo-bg:#E2EEE4;
   --chip:#EFEBE0; --shadow:0 1px 3px rgba(27,36,48,.08);
 }
 [data-theme="dark"]{
   --paper:#0E1B2C; --panel:#152538; --ink:#E8EDF4; --muted:#8FA1B5; --line:#25384F;
-  --bus:#E0B14D; --watch:#E07B72; --borr:#5BC0AC; --tre:#7FA8D9; --comp:#6FB6E8; --reg:#C9A34E;
+  --bus:#E0B14D; --watch:#E07B72; --borr:#5BC0AC; --tre:#7FA8D9; --comp:#6FB6E8; --reg:#C9A34E; --pfc:#C08AE0;
   --hi:#FF8A80; --md:#F2C464; --lo:#8FD3A0;
   --hi-bg:#3A2226; --md-bg:#37301C; --lo-bg:#1E3226;
   --chip:#1D3145; --shadow:0 1px 3px rgba(0,0,0,.35);
@@ -48,21 +48,22 @@ header{position:sticky;top:0;z-index:9;background:var(--paper);
 .hbtn:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--tre);outline-offset:2px}
 
 /* ============ RADAR STRIP (signature) ============ */
-.strip{max-width:1180px;margin:18px auto 0;padding:0 20px;
-  display:grid;grid-template-columns:repeat(7,1fr);gap:7px}
-.seg{position:relative;border:1px solid var(--line);border-left:5px solid var(--seg,#999);
-  background:var(--panel);border-radius:10px;padding:12px 14px;cursor:pointer;
+.strip{max-width:1320px;margin:18px auto 0;padding:0 20px;
+  display:grid;grid-template-columns:repeat(8,1fr);gap:6px}
+.seg{position:relative;border:1px solid var(--line);border-left:4px solid var(--seg,#999);
+  background:var(--panel);border-radius:9px;padding:10px 10px;cursor:pointer;
   text-align:left;box-shadow:var(--shadow);transition:transform .12s ease}
 .seg:hover{transform:translateY(-2px)}
 .seg.active{border-color:var(--seg);background:color-mix(in srgb,var(--seg) 8%,var(--panel))}
-.seg h3{margin:0;font-size:12px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:var(--seg)}
-.seg .total{font-family:Georgia,serif;font-size:30px;line-height:1.1;margin:4px 0 2px}
+.seg h3{margin:0;font-size:11px;font-weight:800;letter-spacing:.3px;text-transform:uppercase;color:var(--seg);white-space:nowrap}
+.seg .total{font-family:Georgia,serif;font-size:25px;line-height:1.1;margin:3px 0 1px}
 .seg .hml{font-size:10.5px;color:var(--muted)}
 .seg .hml b{color:var(--hi)}
 .seg[data-r="BUSINESS"]{--seg:var(--bus)} .seg[data-r="WATCH"]{--seg:var(--watch)}
 .seg[data-r="BORROWING"]{--seg:var(--borr)} .seg[data-r="TREASURY"]{--seg:var(--tre)}
 .seg[data-r="COMPETITOR"]{--seg:var(--comp)}
 .seg[data-r="REGULATORY"]{--seg:var(--reg)}
+.seg[data-r="PFC"]{--seg:var(--pfc)}
 .seg[data-r="ALL"]{--seg:var(--ink)}
 
 /* ============ FILTER RAIL ============ */
@@ -135,6 +136,9 @@ main{max-width:1180px;margin:0 auto 60px;padding:0 20px}
   background:var(--ink);color:var(--paper);font-weight:800;cursor:pointer}
 #gerr{color:var(--hi);font-size:12px;height:16px;margin-top:8px}
 
+@media(max-width:1180px){
+  .strip{grid-template-columns:repeat(4,1fr)}
+}
 @media(max-width:860px){
   .strip{grid-template-columns:repeat(2,1fr)} .seg[data-r="ALL"]{grid-column:span 2}
   .cdate{margin-left:0;width:100%}
@@ -227,7 +231,7 @@ main{max-width:1180px;margin:0 auto 60px;padding:0 20px}
   <button class="more hide" id="moreBtn" onclick="page++;render(true)">Show more</button>
   <div class="empty hide" id="empty">No items match the current filters.<span id="emptyWhy"></span></div>
   <div style="text-align:center;color:var(--muted);font-size:11px;padding:26px 0 0;border-top:1px solid var(--line);margin-top:30px">
-    PFC-NRD v12.2 &middot; classification engine mirrored from the Google Sheet pipeline &middot; auto-generated intelligence, verify before circulation
+    PFC-NRD v12.4 &middot; classification engine mirrored from the Google Sheet pipeline &middot; auto-generated intelligence, verify before circulation
   </div>
 </main>
 
@@ -510,6 +514,26 @@ const RNAME=Object.fromEntries(RADARS.map(([k,v])=>[k,v.toUpperCase()]));
    code)" that name a BORROWER rather than PFC - so both are deliberately excluded. */
 const PFC_SELF_RE=/power finance corporation|\bpfc\b/i;
 function isPfcNamed(it){ return it.p===1 || PFC_SELF_RE.test(it.t||""); }
+/* v12.4 - the engine's theme labels drifted into ~36 near-synonyms that cluttered
+   the Treasury sub-filter (Fed / US Fed / UST / Global Central Banks / Global CBs;
+   Economists / Economist-Editorial / Magazines / BS-Mint / ET Opinion / Hindu Ed; etc.).
+   Fold them to a canonical set for BOTH the dropdown and the filter match, so one
+   choice catches every variant. Display-only - the published data is untouched. */
+const THEME_CANON={
+  "us fed / ust":"Fed / Central Banks","fed":"Fed / Central Banks",
+  "global central banks":"Fed / Central Banks","global cbs":"Fed / Central Banks",
+  "economists":"Economist / Editorial","economist / editorial":"Economist / Editorial",
+  "magazines":"Economist / Editorial","bs/mint":"Economist / Editorial",
+  "et opinion":"Economist / Editorial","hindu ed":"Economist / Editorial",
+  "global fx":"USD/INR & FX","usdinr":"USD/INR & FX","usd/inr & fx":"USD/INR & FX",
+  "trade & tariffs":"Trade & Tariffs","tariffs":"Trade & Tariffs",
+  "geopolitics / commodities":"Geopolitics / Commodities","geopolitics":"Geopolitics / Commodities",
+  "sovereign rating":"Sovereign Rating","sov rating":"Sovereign Rating",
+  "g-sec yields":"G-Sec / Govt Borrowing","g-sec / govt borrowing":"G-Sec / Govt Borrowing","govt borrowing":"G-Sec / Govt Borrowing",
+  "hedging":"Hedging","hedging / swaps":"Hedging",
+  "global macro":"Global Macro","global econ":"Global Macro"
+};
+function canonTheme(t){ const k=String(t||"").toLowerCase().replace(/\s+/g," ").trim(); return THEME_CANON[k]||String(t||"").trim(); }
 const IMP_RANK={High:0,Medium:1,Low:2};
 let items=[], generatedAt="", srcNote="";
 let radar="ALL", period=30, imps=new Set(["High","Medium","Low"]), page=1;   // sort default = newest (see sortBy)
@@ -554,7 +578,7 @@ function enrich(){ ANCHOR=null;
     it.pfcb = CODES_RE.test(it.t)||NAMES_RE.test(it.t);
     it.cr = (it.x&&it.x.cr)||amountCr(it.t);
     if(it.r==="BUSINESS"){it.state=stateOf(it.t);it.sector=sectorOf(it.t);it.mw=mwOf(it.t);}
-    if(it.r==="TREASURY"){it.theme=(it.x&&it.x.th)||themeOf(it.t);it.rt=(it.x&&it.x.rt)||rateDir(it.t);it.inr=(it.x&&it.x.inr)||inrDir(it.t);}
+    if(it.r==="TREASURY"){it.theme=canonTheme((it.x&&it.x.th)||themeOf(it.t));it.rt=(it.x&&it.x.rt)||rateDir(it.t);it.inr=(it.x&&it.x.inr)||inrDir(it.t);}
     if(it.r==="WATCH"){it.wtype=watchType(it.t);}
     if(it.r==="BORROWING"){it.inst=(it.x&&it.x.inst)||instOf(it.t);it.icls=(it.x&&it.x.icls)||"";it.cpn=(it.x&&it.x.cpn)||"";}
     if(it.r==="WATCH"){it.sub=(it.x&&it.x.sub)||it.wtype;it.cls=(it.x&&it.x.cls)||"";}
@@ -728,8 +752,20 @@ setInterval(paintStatus,30000);
 
 function applyLive(j,via){
   if(!j||!j.items)throw new Error("Unexpected response");
+  // A background sync must not yank the desk's view away. Capture the current
+  // filter selections, "show more" depth and scroll position, apply the new
+  // data, then put everything back exactly where it was. (radar, period, search
+  // box and sort are module state / untouched DOM, so they already survive.)
+  const KEEP=['fState','fSector','fTheme','fSub','fClass','fReg','fRegTheme','fSrc'];
+  const savedSel={}; KEEP.forEach(id=>{const e=document.getElementById(id); if(e) savedSel[id]=e.value;});
+  const savedScroll=window.scrollY, savedPage=page;
   items=j.items; RECOMPUTE=false; generatedAt=(j.publishedAt||j.generatedAt||"").slice(0,16).replace("T"," ");
-  enrich(); buildFilters(); setPage(); render();
+  enrich(); buildFilters();
+  KEEP.forEach(id=>{const e=document.getElementById(id); if(!e)return; const want=savedSel[id];
+    if(want&&want!=='*') e.value=[...e.options].some(o=>o.value===want)?want:'*';});   // restore if still present
+  page=savedPage;                 // keep the "show more" depth
+  render(true);                   // keepScroll -> no jump to top
+  window.scrollTo({top:savedScroll});
   const maxD=items.reduce((m,i)=>i.d>m?i.d:m,"");
   const ageDays=maxD?Math.floor((Date.now()-new Date(maxD).getTime())/864e5):null;
   const stale=ageDays!==null&&ageDays>=1;
@@ -927,9 +963,23 @@ function render(keepScroll){
     while((m=reC.exec(s))){out.push(m[1]+'-'+String(+m[2]).padStart(2,'0')+'-'+String(+m[3]).padStart(2,'0'));}
     return out.length?out.sort()[0]:null;
   }
+  // A reference to a COMPLETED Indian fiscal year is an old-news signal: in
+  // mid-2026, "SBI FY25 Rs 50,000cr fundraise" is a re-dated story. FY tokens are
+  // read from the HEADLINE only (never the base64 link) and resolve to 31 March of
+  // the closing year; the earliest date found still wins, so a current "... in FY27"
+  // (future) is not affected. Sinks to the bottom of every sort, not deleted.
+  function fyEndDate(t){
+    const s=String(t||''); let m, best=null;
+    const reFY=/\bfy\s?['\u2019]?\s?(\d{2}|\d{4})(?:\s?[-\/]\s?(\d{2,4}))?\b/ig;
+    while((m=reFY.exec(s))){ let end=m[2]||m[1]; let yr=+end; if(yr<100) yr+=2000;
+      if(yr>=2000&&yr<=2099){ const d=yr+'-03-31'; if(!best||d<best) best=d; } }
+    return best;
+  }
   function realDateOf(it){
     if(it._rd!==undefined) return it._rd;
     let r = it.rd || extractRealDate((it.t||'')+' '+JSON.stringify(it.x||{})+' '+(it.l||'')) || it.d || '';
+    const fy = fyEndDate(it.t||'');
+    if(fy && (!r || fy<r)) r=fy;
     it._rd=r; return r;
   }
   const NEWEST=items.reduce((mx,i)=>{const d=i.d||'';return d>mx?d:mx;}, '');
@@ -1014,6 +1064,7 @@ function card(it){
   if(!kws.length&&it.x&&KWX[it.r]) kws=KWX[it.r](it.x).filter(v=>v&&v!=='-');
   if(!kws.length&&it.f) kws=[String(it.f).replace(/^(AR|W|T|B|R|C)-/,'')].filter(Boolean);
   kws=kws.slice(0,3);
+  if(it.r==="TREASURY"&&it.theme) kws=[it.theme];   // v12.4 chip matches the canonical sub-filter label
   const srcLine='<div class="srcline">'+
     '<span class="rname r-'+it.r+'">'+(RNAME[it.r]||it.r)+'</span>'+
     (outlet?'<span class="outlet t'+rk+'">'+esc(outlet)+'</span>':'<span class="outlet t5">source not stated</span>')+
