@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * PFC NEWS RADAR DASHBOARD (PFC-NRD) — v12.1
+ * PFC NEWS RADAR DASHBOARD (PFC-NRD) — v12.5
  * ============================================================================
  * One Apps Script, one sheet, one pipeline, SIX registers:
  *
@@ -153,7 +153,7 @@
  *   4. If a run ever times out: Manual steps → step0_Version, then step1..step5.
  */
 
-var PFC_VERSION = 'PFC News Radar Dashboard (PFC-NRD) v12.1';
+var PFC_VERSION = 'PFC News Radar Dashboard (PFC-NRD) v12.5';
 
 /* ==========================================================================
  * >>> START HERE <<<  —  runEverything()
@@ -1307,6 +1307,27 @@ var PFC_TOP_BANKS_RE = /\bsbi\b|state bank of india|\bhdfc bank\b|\bicici bank\b
 var PFC_TOP_NBFC_RE  = /bajaj finance|bajaj finserv|shriram finance|cholamandalam|\bl&t finance\b|muthoot|mahindra finance|tata capital|aditya birla (capital|finance)|piramal|lic housing|pnb housing|hdb financial|sundaram finance|\bnbfc\b|indiabulls|iifl finance|poonawalla/i;
 var PFC_MDB_RE = /world bank|asian development bank|\badb\b|\baiib\b|new development bank|\bndb\b|\bjica\b|\bjbic\b|\bkfw\b|european investment bank|\beib\b|green climate fund|\bifc\b|proparco|export credit/i;
 var PFC_SELF_RE = /power finance corporation|\bpfc\b/i;
+
+/* v12.5 - PFC MATERIAL EQUITY EVENT. For the PFC tab only: a *major* share move
+   (>=3%) or a rating-agency / results-driven action naming PFC is material to
+   management and should NOT be filtered as stock noise. Daily drift (<3%) and
+   pure investor tips ("buy or sell", "stocks to buy", multibagger, target-price
+   recommendations) are still blocked. */
+var PFC_BIG_MOVE_RE = /\b(shares?|stock)\b[^.]{0,60}\b(plunge|plummet|crash|tank|slump|tumble|sink|surge|soar|jump|rally|rallie[ds]|zoom|rocket|spike)[a-z]*\b[^.]{0,20}\b([3-9]|[1-9]\d)(\.\d+)?\s?(%|per ?cent)|\b(up|down|fall[a-z]*|fell|gain[a-z]*|rise[a-z]*|rose|drop[a-z]*|slid[a-z]*|declin[a-z]*)\b[^.]{0,25}\b(up to\s+)?([3-9]|[1-9]\d)(\.\d+)?\s?(%|per ?cent)/i;
+var PFC_ANALYST_COVERAGE_RE = /\b(crisil|icra|care ?edge|care ratings|india ratings|ind[- ]ra|fitch|moody'?s|s&p|standard & poor)\b|\b(clsa|jefferies|morgan stanley|goldman|nomura|citi|jpmorgan|jp morgan|macquarie|ubs|hsbc|bernstein|kotak institutional|motilal oswal|nuvama|investec|bofa|bank of america)\b/i;
+var PFC_RESULTS_RE = /\b(q[1-4]|quarter(ly)?|annual|full[- ]year|fy\d{2,4})\b[^.]{0,30}\b(results?|earnings?|profit|pat|nim|net interest|numbers)\b|\b(results?|earnings?|profit after tax|net profit)\b[^.]{0,20}\b(rise|rose|fall|fell|jump|drop|decline|beat|miss|up|down|grow|grew)\b/i;
+/* pure recommendations that stay blocked even for PFC */
+var PFC_PURE_TIP_RE = /\b(buy or sell|should you (buy|sell|invest)|stocks? to (buy|watch|sell|pick)|multibagger|top \d+ (stocks?|picks?)|intraday|penny stocks?|stock (tip|idea)s?|accumulate|initiate[sd]? coverage with (a )?buy)\b/i;
+
+function pfcMaterialEquityEvent_(lower, title) {
+  if (!PFC_SELF_RE.test(title)) return false;         // must name PFC
+  if (PFC_PURE_TIP_RE.test(lower)) return false;        // pure tips never qualify
+  // material if: a big move, OR a rating-agency action, OR a results-driven move
+  var bigMove = PFC_BIG_MOVE_RE.test(lower);
+  var ratingCover = PFC_ANALYST_COVERAGE_RE.test(lower) && /\b(cut|rais|downgrad|upgrad|target|rating|revis|slash|lower|price)/.test(lower);
+  var resultsMove = PFC_RESULTS_RE.test(lower);
+  return bigMove || ratingCover || resultsMove;
+}
 
 function pfcIssuerClass_(text) {
   if (PFC_SELF_RE.test(text)) return 'PFC';
@@ -3088,12 +3109,18 @@ function classifyLocal_(item) {
 
   /* 0) NOISE GATES */
   if (PFC_STALE_CONTEXT_RE.test(lower)) return pfcIgnore_();   // v11.9: re-dated old news (additional/interim charge)
-  if (PFC_STOCKTIP_RE.test(lower) || PFC_STOCKTIP_RE_EXTRA.test(lower)) return pfcIgnore_();
-  if (PFC_EQUITY_RESEARCH_RE.test(lower)) return pfcIgnore_();   // v8.3: brokerage/equity-research calls
-  if (PFC_INVEST_ADVICE_RE.test(lower)) return pfcIgnore_();     // v9.0: personal-finance listicles
-  if (PFC_MF_RE.test(lower)) return pfcIgnore_();                // v9.1: mutual fund / NAV chatter
-  if (PFC_SHARE_PRICE_RE.test(lower)) return pfcIgnore_();       // v9.3: share-price / investor-advice chatter
-  if (pfcEquityNoise_(lower) && !PFC_HARD_EVENT_RE.test(lower)) return pfcIgnore_();   // v9.7: equity-market noise
+  // v12.5: a MAJOR move or rating-agency/results action on PFC is material - keep it
+  // (routes to the PFC tab), overriding the stock-noise gates below. Daily drift and
+  // pure investor tips still fall through to the gates and get filtered.
+  var pfcMaterial = pfcMaterialEquityEvent_(lower, title);
+  if (!pfcMaterial) {
+    if (PFC_STOCKTIP_RE.test(lower) || PFC_STOCKTIP_RE_EXTRA.test(lower)) return pfcIgnore_();
+    if (PFC_EQUITY_RESEARCH_RE.test(lower)) return pfcIgnore_();   // v8.3: brokerage/equity-research calls
+    if (PFC_INVEST_ADVICE_RE.test(lower)) return pfcIgnore_();     // v9.0: personal-finance listicles
+    if (PFC_SHARE_PRICE_RE.test(lower)) return pfcIgnore_();       // v9.3: share-price / investor-advice chatter
+    if (pfcEquityNoise_(lower) && !PFC_HARD_EVENT_RE.test(lower)) return pfcIgnore_();   // v9.7: equity-market noise
+  }
+  if (PFC_MF_RE.test(lower)) return pfcIgnore_();                // v9.1: mutual fund / NAV chatter (always noise)
   if (PFC_NON_LENDING_PROC_RE.test(lower)) return pfcIgnore_();                        // v9.8: ordinary procurement
   if (PFC_RETAIL_DEPOSIT_RE.test(lower)) return pfcIgnore_();                          // v10.7: retail deposit products
   if (PFC_RETAIL_INVEST_RE.test(lower)) return pfcIgnore_();                           // v10.8: SGB / retail investment products
@@ -3181,10 +3208,15 @@ function classifyLocal_(item) {
       // power/infra project and vaguely "market" belongs in Potential Business.
       else if (pfcBusinessHit_(lower, title, text, tag)) radar = 'BUSINESS';
       else if (mkt) radar = 'TREASURY';
+      // v12.5: a PFC material equity event (major move / rating action / results)
+      // with no other signal still belongs in the PFC tab - route to Business.
+      else if (pfcMaterial) radar = 'BUSINESS';
       else radar = 'IGNORE';
     }
   }
-  if ((radar === 'BUSINESS' || radar === 'WATCH') && !forced && !nexus) radar = 'IGNORE';
+  // v12.5: a PFC material equity event carries its own India nexus (it names PFC),
+  // so don't let the nexus re-gate drop it.
+  if ((radar === 'BUSINESS' || radar === 'WATCH') && !forced && !nexus && !pfcMaterial) radar = 'IGNORE';
   if (radar === 'IGNORE') return pfcIgnore_();
   out.radar = radar;
 
