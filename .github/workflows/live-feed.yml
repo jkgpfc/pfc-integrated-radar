@@ -1,0 +1,36 @@
+name: live-feed
+# Every 10 minutes: fetch market, RBI and news data, encrypt it with the LIVE_PASS secret,
+# and publish ONE file (live.json) to the separate branch "live-data". The main branch is never touched.
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch: {}
+permissions:
+  contents: write
+concurrency:
+  group: live-feed
+  cancel-in-progress: true
+jobs:
+  feed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: livefeed
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Fetch and encrypt
+        env:
+          LIVE_PASS: ${{ secrets.LIVE_PASS }}
+        run: node livefeed/fetch.js > /tmp/live.json
+      - name: Publish to live-data branch (one commit, no history kept)
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir /tmp/pub && cp /tmp/live.json /tmp/pub/ && cd /tmp/pub
+          git init -q -b live-data
+          git add live.json
+          git -c user.name=pfc-live-bot -c user.email=pfc-live-bot@users.noreply.github.com commit -q -m "live $(TZ=Asia/Kolkata date '+%F %H:%M') [skip ci]"
+          git push -q -f "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" live-data
