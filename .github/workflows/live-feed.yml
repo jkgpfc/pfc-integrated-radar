@@ -1,19 +1,29 @@
 name: live-feed
-# Every 10 minutes: fetch market, RBI and news data, encrypt it with the LIVE_PASS secret,
-# and publish ONE file (live.json) to the separate branch "live-data". The main branch is never touched.
+# Keeps the Research app's live data fresh without relying on GitHub's cron timer,
+# which is best-effort and had stopped firing for hours at a time.
+#
+# How it works:
+# - One run stays alive for about 5 h 40 min and refreshes live.json every 10 minutes.
+# - Before it ends, it starts the next run itself (workflow_dispatch), so the chain never stops.
+# - The hourly schedule is only a watchdog: if the chain ever breaks, the next cron that GitHub
+#   does fire restarts it. Only one run works at a time (concurrency group, no cancelling).
+#
+# Each refresh fetches market, RBI and news data, encrypts it with the LIVE_PASS secret and
+# publishes ONE file (live.json) to the separate branch "live-data". The main branch is never touched.
 on:
   schedule:
-    - cron: '*/10 * * * *'
+    - cron: '7 * * * *'
   workflow_dispatch: {}
 permissions:
   contents: write
+  actions: write
 concurrency:
   group: live-feed
-  cancel-in-progress: true
+  cancel-in-progress: false
 jobs:
   feed:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 355
     steps:
       - uses: actions/checkout@v4
         with:
@@ -21,16 +31,30 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Fetch and encrypt
+      - name: Refresh every 10 minutes, then hand over to the next run
         env:
           LIVE_PASS: ${{ secrets.LIVE_PASS }}
-        run: node livefeed/fetch.js > /tmp/live.json
-      - name: Publish to live-data branch (one commit, no history kept)
-        env:
           TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          mkdir /tmp/pub && cp /tmp/live.json /tmp/pub/ && cd /tmp/pub
-          git init -q -b live-data
-          git add live.json
-          git -c user.name=pfc-live-bot -c user.email=pfc-live-bot@users.noreply.github.com commit -q -m "live $(TZ=Asia/Kolkata date '+%F %H:%M') [skip ci]"
-          git push -q -f "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" live-data
+          set -u
+          ROOT="$PWD"
+          publish() {
+            node "$ROOT/livefeed/fetch.js" > /tmp/live.json || { echo "fetch failed; will retry next cycle"; return 0; }
+            rm -rf /tmp/pub && mkdir /tmp/pub && cp /tmp/live.json /tmp/pub/ && cd /tmp/pub
+            git init -q -b live-data
+            git add live.json
+            git -c user.name=pfc-live-bot -c user.email=pfc-live-bot@users.noreply.github.com commit -q -m "live $(TZ=Asia/Kolkata date '+%F %H:%M') [skip ci]"
+            git push -q -f "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" live-data || echo "push failed; will retry next cycle"
+            cd "$ROOT"
+          }
+          END=$(( $(date +%s) + 340*60 ))
+          while :; do
+            publish
+            NEXT=$(( $(date +%s) + 600 ))
+            [ "$NEXT" -ge "$END" ] && break
+            sleep 600
+          done
+          echo "Starting the next run so the feed never stops"
+          curl -sS -X POST -H "Authorization: Bearer ${TOKEN}" -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/live-feed.yml/dispatches" \
+            -d '{"ref":"main"}'
